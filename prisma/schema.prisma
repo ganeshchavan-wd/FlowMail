@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String   @unique
+  image     String?
+  createdAt DateTime @default(now())
+
+  emails    Email[]
+  events    CalendarEvent[]
+  chats     AIChat[]
+}
+
+model Email {
+  id          String   @id @default(cuid())
+  gmailId     String   @unique
+  subject     String
+  body        String
+  sender      String
+  priority    String?  @default("normal")
+  receivedAt  DateTime @default(now())
+
+  userId      String
+  user        User @relation(fields: [userId], references: [id])
+}
+
+model CalendarEvent {
+  id          String   @id @default(cuid())
+  eventId     String   @unique
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+
+  userId      String
+  user        User @relation(fields: [userId], references: [id])
+}
+
+model AIChat {
+  id        String   @id @default(cuid())
+  message   String
+  response  String
+
+  userId    String
+  user      User @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+model Department {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  createdAt   DateTime @default(now())
+
+  members     DepartmentMember[]
+  documents   DepartmentDocument[]
+}
+
+model DepartmentMember {
+  id            String @id @default(cuid())
+
+  email         String
+
+  departmentId  String
+  department    Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+}
+
+model DepartmentDocument {
+  id            String @id @default(cuid())
+
+  filename      String
+
+  departmentId  String
+  department    Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  uploadedAt    DateTime @default(now())
+}
+
+model AIActivity {
+  id        String   @id @default(cuid())
+  type      String
+  userEmail String
+  createdAt DateTime @default(now())
+}

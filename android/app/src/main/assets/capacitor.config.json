@@ -1,0 +1,9 @@
+{
+	"appId": "com.flowmail.app",
+	"appName": "FlowMail AI",
+	"webDir": "public",
+	"server": {
+		"url": "https://YOUR-WEBSITE.vercel.app",
+		"cleartext": false
+	}
+}
