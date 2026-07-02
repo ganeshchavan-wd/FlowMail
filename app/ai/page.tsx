@@ -54,9 +54,9 @@ export default function AIPage() {
 
   const startListening = useCallback(() => {
     try {
-     const SpeechRecognition =
-  (window as any).SpeechRecognition ||
-  (window as any).webkitSpeechRecognition;
+      const SpeechRecognition =
+        (window as any).SpeechRecognition ||
+        (window as any).webkitSpeechRecognition;
       if (!SpeechRecognition) return alert("Browser does not support native voice recognition.");
       
       const recognition = new SpeechRecognition();
@@ -125,9 +125,9 @@ export default function AIPage() {
         <Navbar />
 
         {/* Floating background ambient glow – only in dark mode */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none z-0 hidden dark:block" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none z-0 hidden lg:block dark:block" />
 
-        <main className="flex-1 overflow-y-auto px-4 md:px-8 pt-8 pb-36 w-full z-10 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto px-3 sm:px-4 lg:px-8 pt-6 sm:pt-10 lg:pt-8 pb-36 w-full z-10 custom-scrollbar">
           
           {/* Welcoming Interactive Hero Header */}
           <AnimatePresence>
@@ -137,15 +137,15 @@ export default function AIPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                 transition={{ duration: 0.4 }}
-                className="mb-12 pt-12 md:pt-20"
+                className="mb-8 sm:mb-12 pt-6 sm:pt-10 lg:pt-20"
               >
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 dark:bg-indigo-500/10 border border-indigo-300 dark:border-indigo-500/20 text-indigo-700 dark:text-indigo-400 text-xs font-medium mb-4 backdrop-blur-md">
                   <Sparkles className="w-3.5 h-3.5 animate-pulse" /> Next-Gen AI Hub
                 </div>
-                <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-r from-gray-800 via-gray-600 to-gray-400 dark:from-white dark:via-zinc-200 dark:to-zinc-500">
+                <h1 className="text-2xl sm:text-3xl lg:text-6xl font-black tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-r from-gray-800 via-gray-600 to-gray-400 dark:from-white dark:via-zinc-200 dark:to-zinc-500">
                   How can I streamline your workflow today?
                 </h1>
-                <p className="text-gray-600 dark:text-zinc-400 text-base md:text-lg max-w-2xl font-light leading-relaxed mb-8">
+                <p className="text-gray-600 dark:text-zinc-400 text-sm sm:text-base lg:text-lg max-w-2xl font-light leading-relaxed mb-8">
                   Streamline communication, coordinate cross-department assets, or initialize calendar sync instances instantaneously.
                 </p>
                 <AIActions onSelect={(p) => setMessage(p)} />
@@ -164,14 +164,14 @@ export default function AIPage() {
                   transition={{ type: "spring", stiffness: 260, damping: 25 }}
                   className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
-                  <div className={`p-5 md:p-6 rounded-2xl max-w-[88%] shadow-2xl transition-all ${
+                  <div className={`p-4 sm:p-5 lg:p-6 rounded-2xl w-full max-w-full sm:max-w-[88%] shadow-2xl transition-all ${
                     msg.role === "user" 
                       ? "bg-gradient-to-br from-indigo-600 to-indigo-700 text-white font-medium border border-indigo-500/30 shadow-indigo-900/20" 
                       : "bg-white dark:bg-zinc-900/60 border border-gray-200 dark:border-white/[0.08] backdrop-blur-md text-gray-800 dark:text-zinc-200"
                   }`}>
                     {msg.type === "meeting" && msg.meeting ? (
-                      // ... meeting card (unchanged) ...
-                      <div className="space-y-5 min-w-[280px] sm:min-w-[400px]">
+                      // Meeting card with responsive improvements
+                      <div className="space-y-5 w-full min-w-0">
                         <div className="flex items-center gap-2.5 pb-3 border-b border-gray-200 dark:border-white/[0.08]">
                           <div className="p-2 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/20 rounded-xl">
                             <CheckCircle2 className="w-5 h-5" />
@@ -188,7 +188,7 @@ export default function AIPage() {
                             <p className="font-semibold text-gray-800 dark:text-zinc-100 text-base">{msg.meeting.title}</p>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-4 pt-1">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                             <div className="bg-gray-100 dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.04] rounded-xl p-2.5">
                               <p className="text-xs text-gray-500 dark:text-zinc-500 flex items-center gap-1.5 mb-1">
                                 <Layers className="w-3.5 h-3.5 text-gray-400 dark:text-zinc-400" /> Dept.
@@ -209,7 +209,7 @@ export default function AIPage() {
                             </p>
                             <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
                               {msg.meeting.attendees.map((email: string) => (
-                                <span key={email} className="text-xs bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/[0.06] text-gray-700 dark:text-zinc-300 px-2.5 py-1 rounded-md tracking-tight">
+                                <span key={email} className="text-xs bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/[0.06] text-gray-700 dark:text-zinc-300 px-2.5 py-1 rounded-md tracking-tight break-all">
                                   {email}
                                 </span>
                               ))}
@@ -237,7 +237,7 @@ export default function AIPage() {
                         </div>
                       </div>
                     ) : (
-                      <p className="whitespace-pre-wrap leading-relaxed text-sm md:text-base tracking-wide">
+                      <p className="whitespace-pre-wrap leading-relaxed text-sm sm:text-base tracking-wide">
                         {msg.content === "An unexpected error occurred. Please try again." ? (
                           <span className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-medium">
                             <AlertCircle className="w-4 h-4 flex-shrink-0" /> {msg.content}
@@ -267,14 +267,14 @@ export default function AIPage() {
           </div>
 
           {/* Fixed Floating Input Command Box */}
-          <div className="fixed bottom-6 left-4 right-4 md:left-[300px] md:right-8 lg:left-[340px] lg:right-12 z-30">
-            <div className={`p-2 rounded-2xl bg-white/90 dark:bg-zinc-950/70 border backdrop-blur-2xl flex items-center gap-2 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.3)] dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7)] transition-all duration-300 ${
+          <div className="fixed bottom-3 left-3 right-3 lg:left-[340px] lg:right-12 z-30">
+            <div className={`p-1.5 sm:p-2 rounded-2xl bg-white/90 dark:bg-zinc-950/70 border backdrop-blur-2xl flex items-center gap-2 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.3)] dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7)] transition-all duration-300 ${
               isListening ? "border-red-500/40 ring-1 ring-red-500/20" : "border-gray-300 dark:border-white/[0.08] focus-within:border-indigo-500/40 focus-within:ring-1 focus-within:ring-indigo-500/20"
             }`}>
               <button 
                 onClick={startListening} 
                 type="button"
-                className={`p-3.5 rounded-xl transition-all flex items-center justify-center relative group active:scale-95 ${
+                className={`p-3 sm:p-3.5 rounded-xl transition-all flex items-center justify-center relative group active:scale-95 ${
                   isListening 
                     ? "bg-red-500 text-white animate-pulse" 
                     : "bg-gray-100 dark:bg-white/[0.03] text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200 border border-gray-300 dark:border-white/[0.02] hover:bg-gray-200 dark:hover:bg-white/5"
@@ -290,20 +290,20 @@ export default function AIPage() {
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") sendMessage(); }}
                 placeholder="Message FlowMail AI engine, or select a command action above..."
-                className="flex-1 bg-transparent px-3 py-3 outline-none text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-600 text-sm tracking-wide"
+                className="flex-1 bg-transparent px-3 py-3 outline-none text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-600 text-sm sm:text-base tracking-wide"
                 disabled={loading}
               />
 
               <button 
                 onClick={sendMessage} 
                 type="button"
-                className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-300 dark:disabled:bg-zinc-800 text-white p-3.5 rounded-xl font-bold transition-all disabled:opacity-30 flex items-center justify-center active:scale-95 shadow-md shadow-indigo-900/20 disabled:shadow-none disabled:pointer-events-none"
+                className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-300 dark:disabled:bg-zinc-800 text-white p-3 sm:p-3.5 rounded-xl font-bold transition-all disabled:opacity-30 flex items-center justify-center active:scale-95 shadow-md shadow-indigo-900/20 disabled:shadow-none disabled:pointer-events-none"
                 disabled={!message.trim() || loading}
               >
                 <Send className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-[10px] text-center text-gray-500 dark:text-zinc-600 tracking-wide mt-2">
+            <p className="hidden sm:block text-[10px] text-center text-gray-500 dark:text-zinc-600 tracking-wide mt-2">
               FlowMail AI can occasionally frame inaccurate timeline windows. Verify calendar integration endpoints.
             </p>
           </div>
