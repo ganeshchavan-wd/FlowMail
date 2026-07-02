@@ -65,6 +65,7 @@ Output: {
 Return ONLY the JSON object. No additional text or explanation.
 `;
 
+let response = "";
   try {
     const response = await askGemini(prompt);
     
