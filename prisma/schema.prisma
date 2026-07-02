@@ -8,15 +8,16 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String?
-  email     String   @unique
-  image     String?
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  name        String?
+  email       String   @unique
+  image       String?
+  createdAt   DateTime @default(now())
 
-  emails    Email[]
-  events    CalendarEvent[]
-  chats     AIChat[]
+  emails      Email[]
+  events      CalendarEvent[]
+  chats       AIChat[]
+  departments Department[]
 }
 
 model Email {
@@ -56,11 +57,16 @@ model AIChat {
 }
 model Department {
   id          String   @id @default(cuid())
-  name        String   @unique
+  name        String
   createdAt   DateTime @default(now())
+
+  userId      String
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   members     DepartmentMember[]
   documents   DepartmentDocument[]
+
+  @@unique([name, userId])
 }
 
 model DepartmentMember {

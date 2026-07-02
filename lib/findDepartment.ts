@@ -2,8 +2,14 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-export async function findDepartment(userInput: string) {
+export async function findDepartment(
+  userInput: string,
+  userId: string
+) {
   const departments = await prisma.department.findMany({
+    where: {
+      userId,
+    },
     include: {
       members: true,
     },

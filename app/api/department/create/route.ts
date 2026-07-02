@@ -2,11 +2,47 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../auth/[...nextauth]/route";
 
 const prisma = new PrismaClient();
 
 export async function POST(req: NextRequest) {
   try {
+    // Get logged in user
+    const session: any = await getServerSession(authOptions);
+
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Unauthorized",
+        },
+        {
+          status: 401,
+        }
+      );
+    }
+
+    // Find user in database
+    const user = await prisma.user.findUnique({
+      where: {
+        email: session.user.email,
+      },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "User not found",
+        },
+        {
+          status: 404,
+        }
+      );
+    }
+
     const body = await req.json();
 
     const {
@@ -43,11 +79,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check duplicate department
-
-    const existing = await prisma.department.findUnique({
+    // Check duplicate department ONLY for this user
+    const existing = await prisma.department.findFirst({
       where: {
         name,
+        userId: user.id,
       },
     });
 
@@ -64,16 +100,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Create Department
-
-    const department =
-      await prisma.department.create({
-        data: {
-          name,
-        },
-      });
+    const department = await prisma.department.create({
+      data: {
+        name,
+        userId: user.id,
+      },
+    });
 
     // Save Members
-
     await prisma.departmentMember.createMany({
       data: emails.map((email) => ({
         email,
@@ -82,7 +116,6 @@ export async function POST(req: NextRequest) {
     });
 
     // Save Uploaded File
-
     if (filename) {
       await prisma.departmentDocument.create({
         data: {
