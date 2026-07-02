@@ -5,7 +5,7 @@ import { motion, AnimatePresence, useMotionValue, useMotionTemplate } from "fram
 import Sidebar from "@/components/sidebar";
 import Navbar from "@/components/navbar";
 import EmailCard from "@/components/email-card";
-import EmailDetailModal from "@/components/email-detail-modal"; // Add this import
+import EmailDetailModal from "@/components/email-detail-modal";
 import {
   Sparkles,
   FolderOpen,
@@ -26,20 +26,67 @@ interface Email {
   from: string;
   subject: string;
   snippet: string;
-  body?: string; // Add this optional field
+  body?: string;
+}
+
+// Type definitions for structured data
+interface SummaryData {
+  overview: {
+    totalEmails: number;
+    summary: string;
+  };
+  important: Array<{
+    subject: string;
+    sender: string;
+    reason: string;
+  }>;
+  urgent: Array<{
+    task: string;
+  }>;
+  meetings: Array<{
+    title: string;
+    time: string;
+  }>;
+  summary: string[];
+}
+
+interface CategoryData {
+  urgent: Array<{
+    subject: string;
+    sender: string;
+    reason: string;
+  }>;
+  important: Array<{
+    subject: string;
+    sender: string;
+  }>;
+  jobs: Array<{
+    subject: string;
+    company: string;
+  }>;
+  meetings: Array<{
+    subject: string;
+    time: string;
+  }>;
+  promotions: Array<{
+    subject: string;
+  }>;
+  social: Array<{
+    subject: string;
+  }>;
 }
 
 export default function InboxPage() {
   const [emails, setEmails] = useState<Email[]>([]);
   const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState("");
+  const [summary, setSummary] = useState<SummaryData | null>(null);
   const [summarizing, setSummarizing] = useState(false);
-  const [categories, setCategories] = useState("");
+  const [categories, setCategories] = useState<CategoryData | null>(null);
   const [categorizing, setCategorizing] = useState(false);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Local UX enhancement states (Filtering / Active Layout selection)
+  // Local UX enhancement states
   const [activeFilter, setActiveFilter] = useState<"all" | "unread" | "priority">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -55,7 +102,7 @@ export default function InboxPage() {
     mouseY.set(e.clientY - top);
   }
 
-  // --- PRESERVED BACKEND INTERACTION LOGIC ---
+  // --- BACKEND INTERACTION LOGIC ---
   useEffect(() => {
     const loadEmails = async () => {
       try {
@@ -76,8 +123,11 @@ export default function InboxPage() {
       setSummarizing(true);
       const res = await fetch("/api/gmail/summarize");
       const data = await res.json();
-      if (data.success) setSummary(data.summary);
-      else alert(data.error);
+      if (data.success) {
+        setSummary(data.data); // Changed from data.summary to data.data
+      } else {
+        alert(data.error);
+      }
     } catch (error) { 
       console.error(error); 
       alert("Failed to generate summary"); 
@@ -91,8 +141,11 @@ export default function InboxPage() {
       setCategorizing(true);
       const res = await fetch("/api/gmail/categorize");
       const data = await res.json();
-      if (data.success) setCategories(data.categories);
-      else alert(data.error);
+      if (data.success) {
+        setCategories(data.data); // Changed from data.categories to data.data
+      } else {
+        alert(data.error);
+      }
     } finally { 
       setCategorizing(false); 
     }
@@ -110,7 +163,7 @@ export default function InboxPage() {
     setSelectedEmail(null);
   };
 
-  // Memoized filter logic for fast runtimes
+  // Memoized filter logic
   const filteredEmails = useMemo(() => {
     return emails.filter((email) => {
       const matchesSearch = 
@@ -127,7 +180,7 @@ export default function InboxPage() {
       onMouseMove={handleMouseMove}
       className="relative flex min-h-screen bg-gray-50 dark:bg-[#020205] text-gray-900 dark:text-[#e4e4e7] antialiased selection:bg-indigo-500/30 transition-colors duration-300"
     >
-      {/* Immersive Glass Spotlight Background Canvas – visible only in dark mode */}
+      {/* Immersive Glass Spotlight Background Canvas */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <motion.div 
           className="absolute -inset-[400px] opacity-[0.09] blur-[130px] hidden dark:block"
@@ -150,7 +203,6 @@ export default function InboxPage() {
             backgroundSize: "50px 50px"
           }}
         />
-        {/* Light mode subtle background */}
         <div className="absolute inset-0 bg-white/5 opacity-0 dark:opacity-0 opacity-10 block dark:hidden" />
       </div>
 
@@ -257,6 +309,7 @@ export default function InboxPage() {
                 exit={{ opacity: 0, scale: 0.95, height: 0 }}
                 className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 overflow-hidden"
               >
+                {/* Executive Synthesis Panel */}
                 {summary && (
                   <div className="group relative overflow-hidden rounded-2xl border border-indigo-300 dark:border-indigo-500/10 bg-indigo-50/50 dark:bg-gradient-to-b from-neutral-900/40 to-neutral-950/60 p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.02)] backdrop-blur-xl">
                     <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-indigo-500/[0.03] blur-xl group-hover:bg-indigo-500/[0.06] transition-colors" />
@@ -267,21 +320,160 @@ export default function InboxPage() {
                       </h3>
                       <span className="text-[10px] font-mono text-gray-500 dark:text-neutral-500">AI Verified</span>
                     </div>
-                    <p className="text-xs font-normal leading-relaxed text-gray-700 dark:text-neutral-300">{summary}</p>
+                    
+                    <div className="space-y-4 text-sm">
+                      {/* Overview */}
+                      <div>
+                        <h4 className="font-semibold text-indigo-500 dark:text-indigo-400">
+                          📌 Inbox Overview
+                        </h4>
+                        <p className="mt-1 text-gray-700 dark:text-neutral-300">
+                          {summary.overview.summary}
+                        </p>
+                        <span className="text-xs text-gray-500 dark:text-neutral-500">
+                          Total Emails: {summary.overview.totalEmails}
+                        </span>
+                      </div>
+
+                      {/* Important Emails */}
+                      <div>
+                        <h4 className="font-semibold text-red-500 dark:text-red-400">
+                          🔥 Important Emails
+                        </h4>
+                        <ul className="mt-2 space-y-2">
+                          {summary.important.map((mail, index) => (
+                            <li
+                              key={index}
+                              className="rounded-lg bg-neutral-900/30 dark:bg-neutral-800/30 p-2"
+                            >
+                              <div className="font-medium text-gray-900 dark:text-white">
+                                {mail.subject}
+                              </div>
+                              <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                                {mail.sender}
+                              </div>
+                              <div className="text-xs mt-1 text-gray-700 dark:text-neutral-300">
+                                {mail.reason}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Urgent Action Items */}
+                      <div>
+                        <h4 className="font-semibold text-yellow-500 dark:text-yellow-400">
+                          ⚡ Action Items
+                        </h4>
+                        <ul className="list-disc pl-5 mt-2 space-y-1">
+                          {summary.urgent.map((item, index) => (
+                            <li key={index} className="text-gray-700 dark:text-neutral-300">
+                              {item.task}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Meetings */}
+                      <div>
+                        <h4 className="font-semibold text-green-500 dark:text-green-400">
+                          📅 Meetings
+                        </h4>
+                        <ul className="mt-2 space-y-2">
+                          {summary.meetings.map((meeting, index) => (
+                            <li key={index} className="text-gray-700 dark:text-neutral-300">
+                              <div>{meeting.title}</div>
+                              <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                                {meeting.time}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Quick Summary */}
+                      <div>
+                        <h4 className="font-semibold text-blue-500 dark:text-blue-400">
+                          ✅ Quick Summary
+                        </h4>
+                        <ul className="list-disc pl-5 mt-2 space-y-1">
+                          {summary.summary.map((point, index) => (
+                            <li key={index} className="text-gray-700 dark:text-neutral-300">
+                              {point}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
                   </div>
                 )}
 
+                {/* Taxonomy Segments Panel */}
                 {categories && (
-                  <div className="group relative overflow-hidden rounded-2xl border border-emerald-300 dark:border-emerald-500/10 bg-emerald-50/50 dark:bg-gradient-to-b from-neutral-900/40 to-neutral-950/60 p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.02)] backdrop-blur-xl">
+                  <div className="group relative overflow-hidden rounded-2xl border border-emerald-300 dark:border-emerald-500/10 bg-emerald-50/50 dark:bg-gradient-to-b from-neutral-900/40 to-neutral-950/60 p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.02)] backdrop-blur-xl max-h-[600px] overflow-y-auto">
                     <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-emerald-500/[0.03] blur-xl group-hover:bg-emerald-500/[0.06] transition-colors" />
-                    <div className="mb-3 flex items-center justify-between">
+                    <div className="mb-3 flex items-center justify-between sticky top-0 bg-emerald-50/80 dark:bg-neutral-900/80 backdrop-blur-sm py-2 -mt-2 px-1 z-10">
                       <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
                         <SlidersHorizontal className="h-3.5 w-3.5" />
                         Taxonomy Segments
                       </h3>
                       <span className="text-[10px] font-mono text-gray-500 dark:text-neutral-500">Sorted</span>
                     </div>
-                    <p className="text-xs font-normal leading-relaxed text-gray-700 dark:text-neutral-300">{categories}</p>
+                    
+                    <div className="space-y-5">
+                      {[
+                        ["🔥 Urgent", "urgent", "text-red-500 dark:text-red-400"],
+                        ["⭐ Important", "important", "text-yellow-500 dark:text-yellow-400"],
+                        ["💼 Jobs", "jobs", "text-cyan-500 dark:text-cyan-400"],
+                        ["📅 Meetings", "meetings", "text-green-500 dark:text-green-400"],
+                        ["📢 Promotions", "promotions", "text-pink-500 dark:text-pink-400"],
+                        ["👥 Social", "social", "text-purple-500 dark:text-purple-400"]
+                      ].map(([title, key, color]) => (
+                        <div key={key}>
+                          <h4 className={`font-semibold ${color}`}>
+                            {title}
+                          </h4>
+                          <div className="mt-2 space-y-2">
+                            {categories[key as keyof CategoryData]?.length === 0 ? (
+                              <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                                No emails
+                              </div>
+                            ) : (
+                              (categories[key as keyof CategoryData] as any[]).map((mail, index) => (
+                                <div
+                                  key={index}
+                                  className="rounded-lg bg-neutral-900/30 dark:bg-neutral-800/30 p-2"
+                                >
+                                  <div className="font-medium text-gray-900 dark:text-white">
+                                    {mail.subject}
+                                  </div>
+                                  {"sender" in mail && (
+                                    <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                                      {mail.sender}
+                                    </div>
+                                  )}
+                                  {"reason" in mail && (
+                                    <div className="text-xs text-gray-700 dark:text-neutral-300">
+                                      {mail.reason}
+                                    </div>
+                                  )}
+                                  {"company" in mail && (
+                                    <div className="text-xs text-gray-700 dark:text-neutral-300">
+                                      {mail.company}
+                                    </div>
+                                  )}
+                                  {"time" in mail && (
+                                    <div className="text-xs text-gray-700 dark:text-neutral-300">
+                                      {mail.time}
+                                    </div>
+                                  )}
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </motion.div>
@@ -317,7 +509,7 @@ export default function InboxPage() {
                     animate={{ opacity: 1, y: 0 }} 
                     transition={{ delay: Math.min(i * 0.04, 0.3), type: "spring", stiffness: 260, damping: 25 }}
                     className="group relative overflow-hidden rounded-2xl border border-gray-200 dark:border-white/[0.03] bg-white dark:bg-neutral-900/[0.15] p-1.5 backdrop-blur-xl transition-all duration-300 shadow-[inset_0_1px_1px_rgba(0,0,0,0.02)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.01)] hover:border-gray-300 dark:hover:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-neutral-900/[0.3] hover:shadow-[0_12px_30px_rgba(0,0,0,0.1)] dark:hover:shadow-[0_12px_30px_rgba(0,0,0,0.4)] cursor-pointer"
-                    onClick={() => handleEmailClick(email)} // Add click handler
+                    onClick={() => handleEmailClick(email)}
                   >
                     {/* Lateral Accent Strip */}
                     <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-b from-indigo-500/0 via-indigo-500/40 to-indigo-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -335,7 +527,7 @@ export default function InboxPage() {
                           sender={email.from} 
                           subject={email.subject} 
                           preview={email.snippet}
-                          onClick={() => handleEmailClick(email)} // Pass click to EmailCard
+                          onClick={() => handleEmailClick(email)}
                         />
                         
                         {/* Micro-Actions Utility Ribbon */}

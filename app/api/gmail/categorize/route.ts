@@ -18,7 +18,6 @@ export async function GET() {
 
   try {
     const oauth2Client = new google.auth.OAuth2();
-
     oauth2Client.setCredentials({
       access_token: session.accessToken,
     });
@@ -45,10 +44,8 @@ export async function GET() {
         const headers = email.data.payload?.headers || [];
 
         return {
-          from:
-            headers.find((h) => h.name === "From")?.value || "",
-          subject:
-            headers.find((h) => h.name === "Subject")?.value || "",
+          from: headers.find((h) => h.name === "From")?.value || "",
+          subject: headers.find((h) => h.name === "Subject")?.value || "",
           snippet: email.data.snippet || "",
         };
       })
@@ -63,16 +60,64 @@ export async function GET() {
     });
 
     const prompt = `
-Categorize these emails into:
+You are FlowMail AI.
 
-🔥 Urgent
-⭐ Important
-💼 Jobs
-📅 Meetings
-📢 Promotions
-👥 Social
+Analyze these emails.
 
-Return clean markdown.
+Return ONLY valid JSON.
+
+Use EXACTLY this structure:
+
+{
+  "urgent": [
+    {
+      "subject": "",
+      "sender": "",
+      "reason": ""
+    }
+  ],
+
+  "important": [
+    {
+      "subject": "",
+      "sender": ""
+    }
+  ],
+
+  "jobs": [
+    {
+      "subject": "",
+      "company": ""
+    }
+  ],
+
+  "meetings": [
+    {
+      "subject": "",
+      "time": ""
+    }
+  ],
+
+  "promotions": [
+    {
+      "subject": ""
+    }
+  ],
+
+  "social": [
+    {
+      "subject": ""
+    }
+  ]
+}
+
+Rules:
+
+- Return ONLY JSON.
+- Never return markdown.
+- Never explain anything.
+- Put every email into the most appropriate category.
+- Leave arrays empty if there are no matching emails.
 
 Emails:
 
@@ -80,22 +125,63 @@ ${JSON.stringify(emails, null, 2)}
 `;
 
     const result = await model.generateContent(prompt);
-  if (session?.user?.email) {
-  await prisma.aIActivity.create({
-    data: {
-      type: "CHAT",
-      userEmail: session.user.email,
-    },
-  });
-}
-    return Response.json({
-      success: true,
-      categories: result.response.text(),
-    });
+    const text = result.response.text();
+
+    // Log AI activity
+    if (session?.user?.email) {
+      await prisma.aIActivity.create({
+        data: {
+          type: "CHAT",
+          userEmail: session.user.email,
+        },
+      });
+    }
+
+    // Clean and parse JSON
+    try {
+      const cleaned = text
+        .replace(/```json/g, "")
+        .replace(/```/g, "")
+        .trim();
+
+      const categories = JSON.parse(cleaned);
+
+      // Validate the structure has all required fields
+      const requiredFields = ['urgent', 'important', 'jobs', 'meetings', 'promotions', 'social'];
+      const hasAllFields = requiredFields.every(field => field in categories);
+      
+      if (!hasAllFields) {
+        throw new Error('Missing required fields in response');
+      }
+
+      return Response.json({
+        success: true,
+        data: categories,
+      });
+    } catch (parseError) {
+      console.error("Invalid JSON from Gemini");
+      console.error("Raw response:", text);
+
+      // Return fallback structure
+      return Response.json({
+        success: true,
+        data: {
+          urgent: [],
+          important: [],
+          jobs: [],
+          meetings: [],
+          promotions: [],
+          social: [],
+        },
+        warning: "Failed to parse AI response, using fallback data",
+      });
+    }
   } catch (error: any) {
+    console.error("Error in taxonomy categorization:", error);
+    
     return Response.json({
       success: false,
-      error: error.message,
+      error: error.message || "Failed to categorize emails",
     });
   }
 }
