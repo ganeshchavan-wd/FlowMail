@@ -45,19 +45,13 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
     try {
       console.log("🔔 Fetching notifications...");
       const response = await fetch("/api/notifications");
-      console.log("📡 Response status:", response.status);
-      
       const data = await response.json();
-      console.log("📦 Response data:", data);
       
       if (data.success) {
-        console.log(`✅ Setting ${data.notifications?.length || 0} notifications`);
         setNotifications(data.notifications || []);
-      } else {
-        console.error("❌ API returned error:", data.error);
       }
     } catch (error) {
-      console.error("❌ Failed to fetch notifications:", error);
+      console.error("Failed to fetch notifications:", error);
     }
   };
 
@@ -67,20 +61,15 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
     
     try {
       setCheckingEmails(true);
-      console.log("📧 Checking for new emails...");
       const response = await fetch("/api/gmail/check-new");
       const data = await response.json();
-      console.log("📧 Email check response:", data);
       
       if (data.success && data.count > 0) {
-        console.log(`📧 ${data.count} new email(s) detected`);
-        // New emails found, refresh notifications
         await fetchNotifications();
-      } else {
-        console.log("📧 No new emails found");
+        console.log(`📧 ${data.count} new email(s) detected`);
       }
     } catch (error) {
-      console.error("❌ Failed to check new emails:", error);
+      console.error("Failed to check new emails:", error);
     } finally {
       setCheckingEmails(false);
     }
@@ -88,13 +77,9 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
 
   // Load notifications on mount
   useEffect(() => {
-    console.log("🔔 Navbar mounted - fetching initial notifications...");
     fetchNotifications();
 
-    // Check for new emails every 30 seconds
     const emailCheckInterval = setInterval(checkNewEmails, 30000);
-    
-    // Refresh notifications every 60 seconds
     const notificationInterval = setInterval(fetchNotifications, 60000);
 
     return () => {
@@ -129,7 +114,6 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
   // Mark all notifications as read
   const markAllRead = async () => {
     try {
-      console.log("📝 Marking all notifications as read...");
       const response = await fetch("/api/notifications/read", {
         method: "POST",
       });
@@ -142,10 +126,9 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
             isRead: true,
           }))
         );
-        console.log("✅ All notifications marked as read");
       }
     } catch (error) {
-      console.error("❌ Failed to mark all as read:", error);
+      console.error("Failed to mark all as read:", error);
     }
   };
 
@@ -163,6 +146,12 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
       default:
         return "📌";
     }
+  };
+
+  // Truncate long notification titles
+  const truncateTitle = (title: string, maxLength: number = 60) => {
+    if (title.length <= maxLength) return title;
+    return title.substring(0, maxLength) + "...";
   };
 
   return (
@@ -210,11 +199,8 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
             <div ref={notificationRef} className="relative">
               <button
                 onClick={() => {
-                  console.log("🔔 Bell clicked - toggling notifications");
                   setShowNotifications(!showNotifications);
                   if (!showNotifications) {
-                    // Refresh notifications and check for new emails when opening
-                    console.log("🔔 Opening notifications - refreshing...");
                     fetchNotifications();
                     checkNewEmails();
                   }
@@ -225,10 +211,9 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white animate-pulse">
-                    {unreadCount}
+                    {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 )}
-                {/* Small dot to indicate checking emails */}
                 {checkingEmails && (
                   <span className="absolute -bottom-0.5 -right-0.5 flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
@@ -250,7 +235,8 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
                     top-12
                     w-[92vw]
                     max-w-sm
-                    sm:w-80
+                    sm:w-[400px]
+                    md:w-[450px]
                     rounded-xl
                     border
                     border-gray-200
@@ -262,22 +248,22 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
                     z-50
                   "
                 >
-                  <div className="flex items-center justify-between border-b border-gray-200 dark:border-white/10 px-4 py-3">
-                    <h3 className="font-semibold text-sm">
-                      Notifications
-                      {notifications.length > 0 && (
-                        <span className="ml-1 text-xs font-normal text-gray-500">
-                          ({notifications.length})
-                        </span>
-                      )}
-                    </h3>
+                  {/* Header */}
+                  <div className="flex items-center justify-between border-b border-gray-200 dark:border-white/10 px-4 py-3 bg-gray-50 dark:bg-[#0a0a0a]">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-sm text-gray-900 dark:text-white">
+                        Notifications
+                      </h3>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        ({notifications.length})
+                      </span>
+                    </div>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => {
-                          console.log("🔄 Manual refresh triggered");
                           fetchNotifications();
                         }}
-                        className="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                        className="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors p-1 rounded hover:bg-gray-200 dark:hover:bg-white/5"
                         title="Refresh notifications"
                       >
                         🔄
@@ -285,57 +271,69 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
                       {unreadCount > 0 && (
                         <button
                           onClick={markAllRead}
-                          className="text-xs text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 transition-colors"
+                          className="text-xs text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 transition-colors font-medium"
                         >
                           Mark all read
                         </button>
                       )}
                     </div>
                   </div>
-                  <div className="max-h-80 overflow-y-auto">
+
+                  {/* Notification List */}
+                  <div className="max-h-[400px] overflow-y-auto">
                     {notifications.length === 0 ? (
                       <div className="px-4 py-8 text-center">
-                        <div className="text-3xl mb-2">🔔</div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">No notifications</p>
+                        <div className="text-4xl mb-3">🔔</div>
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">No notifications</p>
                         <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                          Click the refresh button to check for new emails
+                          Check for new emails with the refresh button
                         </p>
                       </div>
                     ) : (
                       notifications.map((notification) => (
                         <div
                           key={notification.id}
-                          className={`border-b border-gray-200 dark:border-white/5 px-4 py-3 transition hover:bg-gray-50 dark:hover:bg-white/5 ${
+                          className={`border-b border-gray-100 dark:border-white/5 px-4 py-3 transition hover:bg-gray-50 dark:hover:bg-white/5 ${
                             notification.isRead
-                              ? "opacity-50"
-                              : "bg-indigo-50/50 dark:bg-indigo-500/10"
+                              ? "opacity-60"
+                              : "bg-indigo-50/30 dark:bg-indigo-500/5"
                           }`}
                         >
-                          <div className="flex items-start gap-2">
-                            <span className="text-lg">{getNotificationIcon(notification.type)}</span>
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                {notification.title}
+                          <div className="flex items-start gap-3">
+                            <span className="text-lg flex-shrink-0 mt-0.5">
+                              {getNotificationIcon(notification.type)}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm leading-relaxed ${
+                                notification.isRead
+                                  ? "text-gray-600 dark:text-gray-400"
+                                  : "text-gray-900 dark:text-white font-medium"
+                              }`}>
+                                {truncateTitle(notification.title, 80)}
                               </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                                 {notification.time}
                               </p>
                             </div>
+                            {!notification.isRead && (
+                              <span className="flex-shrink-0 w-2 h-2 rounded-full bg-indigo-500 mt-2"></span>
+                            )}
                           </div>
                         </div>
                       ))
                     )}
                   </div>
-                  <div className="border-t border-gray-200 dark:border-white/10 px-4 py-2 text-center">
+
+                  {/* Footer */}
+                  <div className="border-t border-gray-200 dark:border-white/10 px-4 py-2.5 text-center bg-gray-50 dark:bg-[#0a0a0a]">
                     <button 
                       onClick={() => {
-                        console.log("🔄 Checking for new emails from button...");
                         checkNewEmails();
                       }}
                       disabled={checkingEmails}
-                      className="text-xs text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 transition-colors disabled:opacity-50"
+                      className="text-xs text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors disabled:opacity-50 font-medium"
                     >
-                      {checkingEmails ? "⏳ Checking..." : "🔄 Check for new emails"}
+                      {checkingEmails ? "⏳ Checking for new emails..." : "🔄 Check for new emails"}
                     </button>
                   </div>
                 </motion.div>
@@ -356,7 +354,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
                   <p className="text-sm font-medium text-gray-900 dark:text-white leading-tight">
                     {session?.user?.name || "User"}
                   </p>
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight truncate max-w-[120px]">
                     {session?.user?.email || "user@email.com"}
                   </p>
                 </div>
@@ -373,7 +371,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
                   className="absolute right-0 mt-2 w-56 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111] shadow-2xl overflow-hidden z-50"
                 >
                   <div className="px-4 py-3 border-b border-gray-200 dark:border-white/10">
-                    <p className="font-semibold text-sm text-gray-900 dark:text-white">
+                    <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">
                       {session?.user?.name || "User"}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
