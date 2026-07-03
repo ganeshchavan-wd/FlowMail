@@ -6,6 +6,18 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+// Define the type for summary data
+interface SummaryData {
+  overview: {
+    totalEmails: number;
+    summary: string;
+  };
+  important: Array<{ subject: string; sender: string; reason: string }>;
+  urgent: Array<{ task: string }>;
+  meetings: Array<{ title: string; time: string }>;
+  summary: string[];
+}
+
 export async function GET() {
   const session: any = await getServerSession(authOptions);
 
@@ -139,8 +151,8 @@ ${emails.join("\n")}
     const text = result.response.text();
 
     // Clean and parse JSON
-    let summaryData;
-    let warning = null;
+    let summaryData: SummaryData;
+    let warning: string | null = null;
 
     try {
       const cleaned = text
@@ -149,11 +161,19 @@ ${emails.join("\n")}
         .trim();
 
       summaryData = JSON.parse(cleaned);
+
+      // Validate required fields
+      const requiredFields = ['overview', 'important', 'urgent', 'meetings', 'summary'];
+      const hasAllFields = requiredFields.every(field => field in summaryData);
+      
+      if (!hasAllFields) {
+        throw new Error('Missing required fields in response');
+      }
     } catch (parseError) {
       console.error("Invalid JSON from Gemini");
       console.error("Raw response:", text);
-      
-      // Return a fallback structure if parsing fails
+
+      // ✅ Fallback with proper typing
       summaryData = {
         overview: {
           totalEmails: emails.length,
@@ -178,7 +198,6 @@ ${emails.join("\n")}
       });
     } catch (notifError) {
       console.error("Failed to create notification:", notifError);
-      // Don't fail the request if notification fails
     }
 
     return Response.json({

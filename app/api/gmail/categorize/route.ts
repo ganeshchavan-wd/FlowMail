@@ -6,6 +6,16 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+// Define the type for category data
+interface CategoryData {
+  urgent: Array<{ subject: string; sender: string; reason: string }>;
+  important: Array<{ subject: string; sender: string }>;
+  jobs: Array<{ subject: string; company: string }>;
+  meetings: Array<{ subject: string; time: string }>;
+  promotions: Array<{ subject: string }>;
+  social: Array<{ subject: string }>;
+}
+
 export async function GET() {
   const session: any = await getServerSession(authOptions);
 
@@ -152,8 +162,8 @@ ${JSON.stringify(emails, null, 2)}
     }
 
     // Clean and parse JSON
-    let categoryData;
-    let warning = null;
+    let categoryData: CategoryData;
+    let warning: string | null = null;
 
     try {
       const cleaned = text
@@ -174,6 +184,7 @@ ${JSON.stringify(emails, null, 2)}
       console.error("Invalid JSON from Gemini");
       console.error("Raw response:", text);
 
+      // ✅ Fallback with proper typing
       categoryData = {
         urgent: [],
         important: [],

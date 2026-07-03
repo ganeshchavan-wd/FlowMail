@@ -14,7 +14,9 @@ import {
   Users, 
   CheckCircle2, 
   AlertCircle,
-  Loader2
+  Loader2,
+  Shield,
+  XCircle
 } from "lucide-react";
 import AIActions from "@/components/ai-actions";
 
@@ -32,6 +34,8 @@ type ChatMessage = {
     meetLink: string;
     calendarLink: string;
   };
+  isError?: boolean;
+  isRestricted?: boolean;
 };
 
 export default function AIPage() {
@@ -67,6 +71,81 @@ export default function AIPage() {
     }
   }, []);
 
+  // Check if the message is email-related
+  const isEmailRelated = (text: string): boolean => {
+    const emailKeywords = [
+      // Email actions
+      "email", "mail", "inbox", "gmail", "outlook",
+      "send", "reply", "forward", "compose", "draft",
+      "schedule", "meeting", "calendar", "invite",
+      "summarize", "categorize", "organize", "filter",
+      // Email content
+      "subject", "recipient", "cc", "bcc", "attachment",
+      "greeting", "signature", "thread", "conversation",
+      // Email status
+      "unread", "read", "starred", "important", "urgent",
+      "spam", "trash", "archive", "folder", "label",
+      // Department/team related
+      "department", "team", "member", "colleague",
+      // Meeting related
+      "meeting", "call", "conference", "zoom", "google meet",
+      "schedule", "reschedule", "cancel", "attendee",
+      // Actions on emails
+      "archive", "delete", "move", "copy", "mark as",
+      "flag", "follow up", "reminder",
+      // Common email phrases
+      "send an email", "write an email", "draft an email",
+      "check my email", "read my email", "new email",
+      "email from", "email to", "email about",
+    ];
+
+    // Also check for email-like patterns (contains @ or "email" context)
+    const hasEmailPattern = /[\w\.-]+@[\w\.-]+\.\w+/.test(text);
+    const hasEmailWord = /\bemail\b|\bmail\b|\binbox\b|\bgmail\b/i.test(text);
+
+    // Check if any keyword matches
+    const hasKeyword = emailKeywords.some(keyword => 
+      text.toLowerCase().includes(keyword.toLowerCase())
+    );
+
+    // Additional check: meeting scheduling phrases
+    const hasMeetingPhrase = /\b(schedule|set up|arrange|book)\s+(a|an)?\s*(meeting|call|appointment|event)\b/i.test(text);
+    const hasTimePhrase = /\b(at|on)\s+(\d{1,2}(:\d{2})?\s*(am|pm)?|\d{1,2}\s*(am|pm))\b/i.test(text);
+    const hasDatePhrase = /\b(today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|next|this)\s+(week|month|day|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i.test(text);
+
+    return hasKeyword || hasEmailPattern || hasEmailWord || hasMeetingPhrase || (hasTimePhrase && hasDatePhrase);
+  };
+
+  // Check if the message is restricted (non-email related)
+  const isRestrictedTopic = (text: string): boolean => {
+    const restrictedKeywords = [
+      // General knowledge
+      "who is", "what is", "when is", "where is", "why is", "how to",
+      "tell me about", "explain", "define", "meaning of",
+      // Personal questions
+      "how are you", "what's your name", "who are you", "hello", "hi",
+      // General chat
+      "weather", "news", "sports", "politics", "movie", "music",
+      "food", "recipe", "travel", "history", "science",
+      "math", "calculator", "translate", "language",
+      // Programming
+      "code", "programming", "python", "javascript", "react",
+      "nextjs", "tailwind", "css", "html", "sql",
+      // General questions
+      "what", "who", "where", "when", "why", "how",
+    ];
+
+    // Check if the text is too short (likely not email-related)
+    if (text.trim().length < 10) {
+      return true;
+    }
+
+    // Check if any restricted keyword matches
+    return restrictedKeywords.some(keyword => 
+      text.toLowerCase().includes(keyword.toLowerCase())
+    );
+  };
+
   const sendMessage = async () => {
     if (!message.trim() || loading) return;
     
@@ -77,6 +156,41 @@ export default function AIPage() {
     setMessage("");
     setLoading(true);
 
+    // Check if the message is email-related
+    const isEmailRelatedPrompt = isEmailRelated(userMessage);
+    const isRestrictedPrompt = isRestrictedTopic(userMessage);
+
+    // If the message is restricted (general chat), return a focused response
+    if (isRestrictedPrompt && !isEmailRelatedPrompt) {
+      setChat((prev) => [
+        ...prev,
+        {
+          id: Date.now() + 1,
+          role: "assistant",
+          content: "🤖 I'm FlowMail AI, your email and productivity assistant. I can help you with:\n\n📧 **Email Management** - Read, send, organize, and summarize emails\n📅 **Meeting Scheduling** - Schedule meetings with Google Calendar\n🏢 **Department Management** - Manage team departments and members\n📊 **Email Analysis** - Summarize and categorize your inbox\n\nI'm specifically designed for email-related tasks. Feel free to ask me about anything related to your emails, calendar, or productivity!",
+          isRestricted: true,
+        },
+      ]);
+      setLoading(false);
+      return;
+    }
+
+    // If the message is not email-related at all
+    if (!isEmailRelatedPrompt) {
+      setChat((prev) => [
+        ...prev,
+        {
+          id: Date.now() + 1,
+          role: "assistant",
+          content: "❌ I'm specifically designed to help with email and productivity tasks. I can assist you with:\n\n• Reading and managing your emails\n• Scheduling meetings and calendar events\n• Summarizing and categorizing your inbox\n• Managing departments and team members\n\nPlease ask me something related to email management or calendar scheduling!",
+          isRestricted: true,
+        },
+      ]);
+      setLoading(false);
+      return;
+    }
+
+    // If email-related, proceed with the API call
     try {
       const response = await fetch("/api/chat", { 
         method: "POST", 
@@ -108,7 +222,12 @@ export default function AIPage() {
     } catch { 
       setChat((prev) => [
         ...prev, 
-        { id: Date.now() + 1, role: "assistant", content: "An unexpected error occurred. Please try again." }
+        { 
+          id: Date.now() + 1, 
+          role: "assistant", 
+          content: "An unexpected error occurred. Please try again.",
+          isError: true,
+        }
       ]); 
     } finally {
       setLoading(false); 
@@ -135,13 +254,13 @@ export default function AIPage() {
                 className="mb-8 sm:mb-12 pt-6 sm:pt-10 lg:pt-20"
               >
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 dark:bg-indigo-500/10 border border-indigo-300 dark:border-indigo-500/20 text-indigo-700 dark:text-indigo-400 text-xs font-medium mb-4 backdrop-blur-md">
-                  <Sparkles className="w-3.5 h-3.5 animate-pulse" /> Next-Gen AI Hub
+                  <Sparkles className="w-3.5 h-3.5 animate-pulse" /> Email & Productivity AI
                 </div>
                 <h1 className="text-2xl sm:text-3xl lg:text-6xl font-black tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-r from-gray-800 via-gray-600 to-gray-400 dark:from-white dark:via-zinc-200 dark:to-zinc-500">
-                  How can I streamline your workflow today?
+                  How can I help with your email workflow?
                 </h1>
                 <p className="text-gray-600 dark:text-zinc-400 text-sm sm:text-base lg:text-lg max-w-2xl font-light leading-relaxed mb-8">
-                  Streamline communication, coordinate cross-department assets, or initialize calendar sync instances instantaneously.
+                  I'm your email assistant. Ask me about managing emails, scheduling meetings, or organizing your inbox.
                 </p>
                 <AIActions onSelect={(p) => setMessage(p)} />
               </motion.header>
@@ -162,10 +281,14 @@ export default function AIPage() {
                   <div className={`p-4 sm:p-5 lg:p-6 rounded-2xl w-full max-w-full sm:max-w-[88%] shadow-2xl transition-all ${
                     msg.role === "user" 
                       ? "bg-gradient-to-br from-indigo-600 to-indigo-700 text-white font-medium border border-indigo-500/30 shadow-indigo-900/20" 
-                      : "bg-white dark:bg-zinc-900/60 border border-gray-200 dark:border-white/[0.08] backdrop-blur-md text-gray-800 dark:text-zinc-200"
+                      : msg.isRestricted
+                        ? "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-500/20 backdrop-blur-md text-gray-800 dark:text-zinc-200"
+                        : msg.isError
+                          ? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/20 backdrop-blur-md text-gray-800 dark:text-zinc-200"
+                          : "bg-white dark:bg-zinc-900/60 border border-gray-200 dark:border-white/[0.08] backdrop-blur-md text-gray-800 dark:text-zinc-200"
                   }`}>
                     {msg.type === "meeting" && msg.meeting ? (
-                      // Meeting card with responsive improvements
+                      // Meeting card
                       <div className="space-y-5 w-full min-w-0">
                         <div className="flex items-center gap-2.5 pb-3 border-b border-gray-200 dark:border-white/[0.08]">
                           <div className="p-2 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/20 rounded-xl">
@@ -233,11 +356,19 @@ export default function AIPage() {
                       </div>
                     ) : (
                       <p className="whitespace-pre-wrap leading-relaxed text-sm sm:text-base tracking-wide">
-                        {msg.content === "An unexpected error occurred. Please try again." ? (
-                          <span className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-medium">
-                            <AlertCircle className="w-4 h-4 flex-shrink-0" /> {msg.content}
+                        {msg.isRestricted ? (
+                          <span className="flex items-start gap-2 text-amber-600 dark:text-amber-400">
+                            <Shield className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                            <span>{msg.content}</span>
                           </span>
-                        ) : msg.content}
+                        ) : msg.isError ? (
+                          <span className="flex items-start gap-2 text-rose-600 dark:text-rose-400 font-medium">
+                            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                            <span>{msg.content}</span>
+                          </span>
+                        ) : (
+                          msg.content
+                        )}
                       </p>
                     )}
                   </div>
@@ -253,7 +384,7 @@ export default function AIPage() {
                 >
                   <div className="bg-white dark:bg-zinc-900/40 border border-gray-200 dark:border-white/[0.06] backdrop-blur-md text-gray-600 dark:text-zinc-400 py-3.5 px-5 rounded-2xl flex items-center gap-3 shadow-xl">
                     <Loader2 className="w-4 h-4 animate-spin text-indigo-600 dark:text-indigo-400" />
-                    <span className="text-xs tracking-wider font-medium bg-gradient-to-r from-gray-600 to-gray-400 dark:from-zinc-400 dark:to-zinc-600 bg-clip-text text-transparent">Processing request pipeline...</span>
+                    <span className="text-xs tracking-wider font-medium bg-gradient-to-r from-gray-600 to-gray-400 dark:from-zinc-400 dark:to-zinc-600 bg-clip-text text-transparent">Processing your request...</span>
                   </div>
                 </motion.div>
               )}
@@ -284,7 +415,7 @@ export default function AIPage() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") sendMessage(); }}
-                placeholder="Message FlowMail AI engine, or select a command action above..."
+                placeholder="Ask me about emails, meetings, or inbox management..."
                 className="flex-1 bg-transparent px-3 py-3 outline-none text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-600 text-sm sm:text-base tracking-wide"
                 disabled={loading}
               />
@@ -299,7 +430,7 @@ export default function AIPage() {
               </button>
             </div>
             <p className="hidden sm:block text-[10px] text-center text-gray-500 dark:text-zinc-600 tracking-wide mt-2">
-              FlowMail AI can occasionally frame inaccurate timeline windows. Verify calendar integration endpoints.
+              💡 I'm your email assistant. Ask me about emails, meetings, or calendar management.
             </p>
           </div>
 
