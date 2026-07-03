@@ -39,14 +39,13 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
   const [checkingEmails, setCheckingEmails] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const notificationButtonRef = useRef<HTMLButtonElement>(null);
 
   // Fetch notifications
   const fetchNotifications = async () => {
     try {
-      console.log("🔔 Fetching notifications...");
       const response = await fetch("/api/notifications");
       const data = await response.json();
-      
       if (data.success) {
         setNotifications(data.notifications || []);
       }
@@ -58,15 +57,12 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
   // Check for new emails
   const checkNewEmails = async () => {
     if (checkingEmails) return;
-    
     try {
       setCheckingEmails(true);
       const response = await fetch("/api/gmail/check-new");
       const data = await response.json();
-      
       if (data.success && data.count > 0) {
         await fetchNotifications();
-        console.log(`📧 ${data.count} new email(s) detected`);
       }
     } catch (error) {
       console.error("Failed to check new emails:", error);
@@ -78,10 +74,8 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
   // Load notifications on mount
   useEffect(() => {
     fetchNotifications();
-
     const emailCheckInterval = setInterval(checkNewEmails, 30000);
     const notificationInterval = setInterval(fetchNotifications, 60000);
-
     return () => {
       clearInterval(emailCheckInterval);
       clearInterval(notificationInterval);
@@ -98,7 +92,6 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
         setShowNotifications(false);
       }
     }
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -118,7 +111,6 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
         method: "POST",
       });
       const data = await response.json();
-      
       if (data.success) {
         setNotifications((prev) =>
           prev.map((n) => ({
@@ -146,12 +138,6 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
       default:
         return "📌";
     }
-  };
-
-  // Truncate long notification titles
-  const truncateTitle = (title: string, maxLength: number = 60) => {
-    if (title.length <= maxLength) return title;
-    return title.substring(0, maxLength) + "...";
   };
 
   return (
@@ -195,9 +181,10 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
               />
             </div>
 
-            {/* Notifications */}
+            {/* Notifications Button */}
             <div ref={notificationRef} className="relative">
               <button
+                ref={notificationButtonRef}
                 onClick={() => {
                   setShowNotifications(!showNotifications);
                   if (!showNotifications) {
@@ -222,121 +209,141 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
                 )}
               </button>
 
-              {/* Notifications Dropdown */}
+              {/* Notifications Dropdown - FIXED POSITIONING */}
               {showNotifications && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                  transition={{ duration: 0.15 }}
-                  className="
-                    absolute
-                    right-2
-                    top-12
-                    w-[92vw]
-                    max-w-sm
-                    sm:w-[400px]
-                    md:w-[450px]
-                    rounded-xl
-                    border
-                    border-gray-200
-                    dark:border-white/10
-                    bg-white
-                    dark:bg-[#111]
-                    shadow-2xl
-                    overflow-hidden
-                    z-50
-                  "
-                >
-                  {/* Header */}
-                  <div className="flex items-center justify-between border-b border-gray-200 dark:border-white/10 px-4 py-3 bg-gray-50 dark:bg-[#0a0a0a]">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-sm text-gray-900 dark:text-white">
-                        Notifications
-                      </h3>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        ({notifications.length})
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          fetchNotifications();
-                        }}
-                        className="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors p-1 rounded hover:bg-gray-200 dark:hover:bg-white/5"
-                        title="Refresh notifications"
-                      >
-                        🔄
-                      </button>
-                      {unreadCount > 0 && (
+                <>
+                  {/* Backdrop for mobile */}
+                  <div
+                    className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[998] md:hidden"
+                    onClick={() => setShowNotifications(false)}
+                  />
+                  
+                  <motion.div
+                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="
+                      fixed 
+                      left-1/2 
+                      -translate-x-1/2 
+                      top-14 
+                      w-[95vw] 
+                      max-w-[420px]
+                      sm:max-w-[380px]
+                      md:absolute 
+                      md:left-auto 
+                      md:right-0 
+                      md:top-12 
+                      md:translate-x-0 
+                      md:w-[92vw]
+                      md:max-w-[420px]
+                      lg:max-w-[480px]
+                      rounded-xl 
+                      border 
+                      border-gray-200 
+                      dark:border-white/10 
+                      bg-white 
+                      dark:bg-[#111] 
+                      shadow-2xl 
+                      shadow-black/30
+                      overflow-hidden 
+                      z-[999]
+                    "
+                  >
+                    {/* Header */}
+                    <div className="flex items-center justify-between border-b border-gray-200 dark:border-white/10 px-3 sm:px-4 py-3 bg-gray-50 dark:bg-[#0a0a0a]">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-sm text-gray-900 dark:text-white">
+                          Notifications
+                        </h3>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          ({notifications.length})
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 sm:gap-2">
                         <button
-                          onClick={markAllRead}
-                          className="text-xs text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 transition-colors font-medium"
+                          onClick={fetchNotifications}
+                          className="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors p-1 rounded hover:bg-gray-200 dark:hover:bg-white/5"
+                          title="Refresh notifications"
                         >
-                          Mark all read
+                          🔄
                         </button>
+                        {unreadCount > 0 && (
+                          <button
+                            onClick={markAllRead}
+                            className="text-xs text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 transition-colors font-medium whitespace-nowrap"
+                          >
+                            Mark all read
+                          </button>
+                        )}
+                        {/* Close button for mobile */}
+                        <button
+                          onClick={() => setShowNotifications(false)}
+                          className="md:hidden text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 p-1 rounded hover:bg-gray-200 dark:hover:bg-white/5"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Notification List */}
+                    <div className="max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-zinc-700 scrollbar-track-transparent">
+                      {notifications.length === 0 ? (
+                        <div className="px-4 py-8 text-center">
+                          <div className="text-4xl mb-3">🔔</div>
+                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">No notifications</p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                            Check for new emails with the refresh button
+                          </p>
+                        </div>
+                      ) : (
+                        notifications.map((notification) => (
+                          <div
+                            key={notification.id}
+                            className={`border-b border-gray-100 dark:border-white/5 px-3 sm:px-4 py-3 transition hover:bg-gray-50 dark:hover:bg-white/5 ${
+                              notification.isRead
+                                ? "opacity-60"
+                                : "bg-indigo-50/30 dark:bg-indigo-500/5"
+                            }`}
+                          >
+                            <div className="flex items-start gap-2 sm:gap-3">
+                              <span className="text-base sm:text-lg flex-shrink-0 mt-0.5">
+                                {getNotificationIcon(notification.type)}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <p className={`text-xs sm:text-sm leading-relaxed break-words ${
+                                  notification.isRead
+                                    ? "text-gray-600 dark:text-gray-400"
+                                    : "text-gray-900 dark:text-white font-medium"
+                                }`}>
+                                  {notification.title}
+                                </p>
+                                <p className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-500 mt-1">
+                                  {notification.time}
+                                </p>
+                              </div>
+                              {!notification.isRead && (
+                                <span className="flex-shrink-0 w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-indigo-500 mt-2"></span>
+                              )}
+                            </div>
+                          </div>
+                        ))
                       )}
                     </div>
-                  </div>
 
-                  {/* Notification List */}
-                  <div className="max-h-[400px] overflow-y-auto">
-                    {notifications.length === 0 ? (
-                      <div className="px-4 py-8 text-center">
-                        <div className="text-4xl mb-3">🔔</div>
-                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">No notifications</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                          Check for new emails with the refresh button
-                        </p>
-                      </div>
-                    ) : (
-                      notifications.map((notification) => (
-                        <div
-                          key={notification.id}
-                          className={`border-b border-gray-100 dark:border-white/5 px-4 py-3 transition hover:bg-gray-50 dark:hover:bg-white/5 ${
-                            notification.isRead
-                              ? "opacity-60"
-                              : "bg-indigo-50/30 dark:bg-indigo-500/5"
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <span className="text-lg flex-shrink-0 mt-0.5">
-                              {getNotificationIcon(notification.type)}
-                            </span>
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-sm leading-relaxed ${
-                                notification.isRead
-                                  ? "text-gray-600 dark:text-gray-400"
-                                  : "text-gray-900 dark:text-white font-medium"
-                              }`}>
-                                {truncateTitle(notification.title, 80)}
-                              </p>
-                              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                                {notification.time}
-                              </p>
-                            </div>
-                            {!notification.isRead && (
-                              <span className="flex-shrink-0 w-2 h-2 rounded-full bg-indigo-500 mt-2"></span>
-                            )}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-
-                  {/* Footer */}
-                  <div className="border-t border-gray-200 dark:border-white/10 px-4 py-2.5 text-center bg-gray-50 dark:bg-[#0a0a0a]">
-                    <button 
-                      onClick={() => {
-                        checkNewEmails();
-                      }}
-                      disabled={checkingEmails}
-                      className="text-xs text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors disabled:opacity-50 font-medium"
-                    >
-                      {checkingEmails ? "⏳ Checking for new emails..." : "🔄 Check for new emails"}
-                    </button>
-                  </div>
-                </motion.div>
+                    {/* Footer */}
+                    <div className="border-t border-gray-200 dark:border-white/10 px-3 sm:px-4 py-2.5 text-center bg-gray-50 dark:bg-[#0a0a0a]">
+                      <button 
+                        onClick={checkNewEmails}
+                        disabled={checkingEmails}
+                        className="text-xs text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors disabled:opacity-50 font-medium"
+                      >
+                        {checkingEmails ? "⏳ Checking for new emails..." : "🔄 Check for new emails"}
+                      </button>
+                    </div>
+                  </motion.div>
+                </>
               )}
             </div>
 
@@ -363,56 +370,87 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
 
               {/* Profile Dropdown */}
               {showProfileMenu && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute right-0 mt-2 w-56 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111] shadow-2xl overflow-hidden z-50"
-                >
-                  <div className="px-4 py-3 border-b border-gray-200 dark:border-white/10">
-                    <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">
-                      {session?.user?.name || "User"}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                      {session?.user?.email || "user@email.com"}
-                    </p>
-                  </div>
-
-                  <div className="py-1">
-                    <Link
-                      href="/settings"
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
-                      onClick={() => setShowProfileMenu(false)}
-                    >
-                      <Settings className="h-4 w-4" />
-                      Settings
-                    </Link>
-                    <Link
-                      href="/about"
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
-                      onClick={() => setShowProfileMenu(false)}
-                    >
-                      <HelpCircle className="h-4 w-4" />
-                      About FlowMail AI
-                    </Link>
-                  </div>
-
-                  <div className="border-t border-gray-200 dark:border-white/10" />
-
-                  <button
-                    onClick={() => {
-                      setShowProfileMenu(false);
-                      signOut({
-                        callbackUrl: "/login",
-                      });
-                    }}
-                    className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                <>
+                  {/* Backdrop for mobile */}
+                  <div
+                    className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[998] md:hidden"
+                    onClick={() => setShowProfileMenu(false)}
+                  />
+                  
+                  <motion.div
+                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="
+                      fixed 
+                      left-1/2 
+                      -translate-x-1/2 
+                      top-20 
+                      w-[90vw] 
+                      max-w-[320px]
+                      md:absolute 
+                      md:left-auto 
+                      md:right-0 
+                      md:top-12 
+                      md:translate-x-0 
+                      md:w-56
+                      rounded-xl 
+                      border 
+                      border-gray-200 
+                      dark:border-white/10 
+                      bg-white 
+                      dark:bg-[#111] 
+                      shadow-2xl 
+                      shadow-black/30
+                      overflow-hidden 
+                      z-[999]
+                    "
                   >
-                    <LogOut className="h-4 w-4" />
-                    Logout
-                  </button>
-                </motion.div>
+                    <div className="px-4 py-3 border-b border-gray-200 dark:border-white/10">
+                      <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">
+                        {session?.user?.name || "User"}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        {session?.user?.email || "user@email.com"}
+                      </p>
+                    </div>
+
+                    <div className="py-1">
+                      <Link
+                        href="/settings"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+                        onClick={() => setShowProfileMenu(false)}
+                      >
+                        <Settings className="h-4 w-4" />
+                        Settings
+                      </Link>
+                      <Link
+                        href="/about"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+                        onClick={() => setShowProfileMenu(false)}
+                      >
+                        <HelpCircle className="h-4 w-4" />
+                        About FlowMail AI
+                      </Link>
+                    </div>
+
+                    <div className="border-t border-gray-200 dark:border-white/10" />
+
+                    <button
+                      onClick={() => {
+                        setShowProfileMenu(false);
+                        signOut({
+                          callbackUrl: "/login",
+                        });
+                      }}
+                      className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Logout
+                    </button>
+                  </motion.div>
+                </>
               )}
             </div>
           </div>

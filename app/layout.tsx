@@ -3,9 +3,19 @@ import Providers from "../components/providers";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import DevWarningSuppressor from "@/components/DevWarningSuppressor";
 
-export const metadata = {
+import type { Metadata, Viewport } from "next";
+
+export const metadata: Metadata = {
   title: "FlowMail AI",
   description: "AI Powered Email & Calendar Assistant",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
