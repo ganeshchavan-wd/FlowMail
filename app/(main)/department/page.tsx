@@ -16,8 +16,6 @@ import {
   Trash2,
 } from "lucide-react";
 
-import Sidebar from "@/components/sidebar";
-import Navbar from "@/components/navbar";
 import CreateDepartmentModal from "@/components/create-department-modal";
 import DepartmentDetailsModal from "@/components/department-details-modal";
 import RenameDepartmentModal from "@/components/rename-department-modal";
@@ -103,10 +101,7 @@ export default function DepartmentPage() {
         <div className="absolute bottom-0 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-purple-600/10 blur-3xl dark:opacity-100 opacity-50" />
       </div>
 
-      <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Navbar />
-
         <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-8 lg:py-12">
           {/* Header */}
           <motion.div

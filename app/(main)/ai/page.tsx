@@ -16,8 +16,6 @@ import {
   AlertCircle,
   Loader2
 } from "lucide-react";
-import Sidebar from "@/components/sidebar";
-import Navbar from "@/components/navbar";
 import AIActions from "@/components/ai-actions";
 
 type ChatMessage = {
@@ -119,11 +117,8 @@ export default function AIPage() {
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-[#060608] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-100/50 dark:from-indigo-950/20 via-gray-50 dark:via-[#060608] to-gray-100/30 dark:to-[#010103] text-gray-900 dark:text-zinc-100 overflow-hidden font-sans transition-colors duration-300">
-      <Sidebar />
       
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-        <Navbar />
-
         {/* Floating background ambient glow – only in dark mode */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none z-0 hidden lg:block dark:block" />
 

@@ -2,8 +2,6 @@
 
 import { useEffect, useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence, useMotionValue, useMotionTemplate } from "framer-motion";
-import Sidebar from "@/components/sidebar";
-import Navbar from "@/components/navbar";
 import EmailCard from "@/components/email-card";
 import EmailDetailModal from "@/components/email-detail-modal";
 import {
@@ -254,11 +252,7 @@ export default function InboxPage() {
       </div>
 
       {/* Main Structural Compartments */}
-      <Sidebar />
-      
       <div className="relative z-10 flex-1 overflow-x-hidden">
-        <Navbar />
-
         <motion.main 
           initial={{ opacity: 0, y: 15 }} 
           animate={{ opacity: 1, y: 0 }}

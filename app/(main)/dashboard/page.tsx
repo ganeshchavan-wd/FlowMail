@@ -1,8 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Sidebar from "@/components/sidebar";
-import Navbar from "@/components/navbar";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
@@ -100,11 +98,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="relative z-10 flex">
-        <Sidebar />
-
         <div className="flex-1 min-w-0">
-          <Navbar />
-
           <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-10 py-6 sm:py-8 lg:py-12">
             {/* Hero header */}
             <motion.div
@@ -316,4 +310,4 @@ export default function DashboardPage() {
       </div>
     </div>
   );
-}
+} 

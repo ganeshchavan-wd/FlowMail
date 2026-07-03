@@ -1,12 +1,21 @@
 "use client";
 
-import { useSession, signIn, signOut } from "next-auth/react";
-import { motion } from "framer-motion";
-import { Search, Bell, ChevronDown, Sparkles, Menu } from "lucide-react";
-import Logo from "@/components/logo";
-import NotificationDropdown from "./notification-dropdown";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { motion } from "framer-motion";
+import {
+  Menu,
+  X,
+  Bell,
+  Search,
+  User,
+  LogOut,
+  Settings,
+  HelpCircle,
+  Sparkles,
+} from "lucide-react";
 
 interface NavbarProps {
   onMenuClick?: () => void;
@@ -14,120 +23,223 @@ interface NavbarProps {
 
 export default function Navbar({ onMenuClick }: NavbarProps) {
   const { data: session } = useSession();
+  const pathname = usePathname();
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([
+    { id: 1, title: "New email from John", time: "2 min ago", read: false },
+    { id: 2, title: "Meeting reminder: Design review", time: "1 hour ago", read: false },
+    { id: 3, title: "AI summarized 5 emails", time: "3 hours ago", read: true },
+  ]);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false);
+      }
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Get page title from pathname
+  const getPageTitle = () => {
+    const path = pathname.split("/")[1] || "dashboard";
+    return path.charAt(0).toUpperCase() + path.slice(1);
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <motion.nav 
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="h-14 sm:h-16 lg:h-20 w-full border-b border-gray-200 dark:border-white/[0.06] flex items-center justify-between px-2 sm:px-4 md:px-10 bg-white/80 dark:bg-gradient-to-b dark:from-[#0a0a0f]/90 dark:to-[#030303]/90 backdrop-blur-2xl sticky top-0 z-50 shadow-[0_4px_30px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_30px_rgba(0,0,0,0.6)] transition-colors duration-300"
-    >
-      {/* Left: Hamburger Menu + Logo */}
-      <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-        {/* Hamburger Menu - Mobile Only */}
-        <button 
-          onClick={onMenuClick}
-          className="lg:hidden p-2.5 rounded-lg hover:bg-gray-200 dark:hover:bg-white/10 transition-colors -ml-1"
-          aria-label="Toggle menu"
-        >
-          <Menu size={20} className="text-gray-700 dark:text-zinc-300" />
-        </button>
-
-        <Logo />
-        <span className="hidden lg:inline-block text-[10px] uppercase tracking-[0.3em] text-gray-500 dark:text-zinc-500 font-bold ml-2 border-l border-gray-200 dark:border-white/[0.06] pl-3">
-          AI Suite
-        </span>
-      </div>
-
-      {/* Center: Search Bar with Icon */}
-      <div className="hidden md:flex flex-1 max-w-xl mx-4 lg:mx-8 relative group">
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 hidden dark:block" />
-        <div className="relative flex items-center w-full">
-          <Search className="absolute left-4 w-4 h-4 text-gray-400 dark:text-zinc-500 group-focus-within:text-indigo-500 dark:group-focus-within:text-indigo-400 transition-colors" />
-          <input
-            type="text"
-            placeholder="Search emails..."
-            className="w-full bg-gray-100 dark:bg-white/[0.04] border border-gray-300 dark:border-white/[0.08] rounded-2xl py-3 pl-11 pr-4 outline-none focus:border-indigo-500/50 focus:bg-gray-50 dark:focus:bg-white/[0.06] transition-all duration-300 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-600 focus:placeholder:text-gray-500 dark:focus:placeholder:text-zinc-500 shadow-[inset_0_1px_0_rgba(0,0,0,0.02)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]"
-            suppressHydrationWarning
-          />
-          <kbd className="absolute right-3 hidden lg:flex items-center gap-1 text-[10px] font-mono text-gray-400 dark:text-zinc-500 bg-gray-200 dark:bg-white/[0.05] px-2 py-1 rounded border border-gray-300 dark:border-white/[0.06]">
-            ⌘K
-          </kbd>
-        </div>
-      </div>
-
-      {/* Right: Notifications + User Profile */}
-      <div className="flex items-center gap-1 sm:gap-2 md:gap-4 flex-shrink-0">
-        {/* Search Icon - Mobile Only */}
-        <button className="md:hidden p-2.5 rounded-lg hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
-          <Search size={18} className="text-gray-600 dark:text-zinc-400" />
-        </button>
-
-        {/* Notification Bell with Badge */}
-        <div className="relative">
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="relative p-2.5 rounded-full hover:bg-gray-200 dark:hover:bg-white/[0.06] transition-colors group"
-          >
-            <Bell className="w-4 h-4 md:w-5 md:h-5 text-gray-400 dark:text-zinc-400" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-          </button>
-          {showNotifications && (
-            <div className="absolute right-2 md:right-0 mt-2 w-[calc(100vw-2rem)] sm:w-80 max-w-[360px]">
-              <NotificationDropdown />
-            </div>
-          )}
-        </div>
-
-        {/* About Button - Hidden on Mobile */}
-        <div className="hidden lg:block">
-          <Link
-            href="/about"
-            className="rounded-xl border border-gray-300 dark:border-white/10 px-4 py-2 text-sm font-medium text-gray-700 dark:text-zinc-300 transition hover:border-cyan-500 hover:text-cyan-500"
-          >
-            About
-          </Link>
-        </div>
-
-        {/* User Profile Card */}
-        {session ? (
-          <div className="flex items-center gap-1 sm:gap-2 md:gap-3 bg-gray-100 dark:bg-white/[0.04] border border-gray-300 dark:border-white/[0.08] py-1 pl-1 pr-2 sm:pr-3 md:pr-4 rounded-full hover:bg-gray-200 dark:hover:bg-white/[0.07] transition-all duration-200 shadow-[inset_0_1px_0_rgba(0,0,0,0.02)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] group max-w-fit">
-            <img
-              src={session.user?.image || ""}
-              alt="Profile"
-              className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-full border-2 border-gray-300 dark:border-white/[0.1] group-hover:border-indigo-400/50 transition-colors flex-shrink-0"
-            />
-            
-            <div className="hidden sm:flex flex-col leading-tight min-w-0">
-              <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white truncate max-w-[110px]">
-                {session?.user?.name || "User"}
-              </span>
-              <span className="hidden md:block text-[11px] text-gray-500 dark:text-zinc-400 truncate max-w-[170px]">
-                {session?.user?.email}
-              </span>
-            </div>
-            
-            <ChevronDown className="hidden sm:block w-3.5 h-3.5 text-gray-400 dark:text-zinc-500 group-hover:text-gray-700 dark:group-hover:text-zinc-300 ml-0.5 sm:ml-1 transition-colors flex-shrink-0" />
-
+    <header className="sticky top-0 z-40 border-b border-gray-200 dark:border-white/5 bg-white/80 dark:bg-[#030712]/80 backdrop-blur-xl">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between gap-4">
+          {/* Left section - Menu and title */}
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => signOut()}
-              className="hidden lg:block ml-1 md:ml-2 text-[10px] uppercase tracking-[0.15em] text-gray-500 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 transition-colors font-medium whitespace-nowrap"
-              suppressHydrationWarning
+              onClick={onMenuClick}
+              className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5 lg:hidden transition-colors"
+              aria-label="Toggle sidebar"
             >
-              Logout
+              <Menu className="h-5 w-5" />
             </button>
+
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600">
+                <Sparkles className="h-4 w-4 text-white" />
+              </div>
+              <div className="hidden sm:block">
+                <h1 className="text-sm font-semibold text-gray-900 dark:text-white">
+                  {getPageTitle()}
+                </h1>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                  {pathname === "/dashboard" ? "Welcome back!" : "Manage your workspace"}
+                </p>
+              </div>
+            </div>
           </div>
-        ) : (
-          <button
-            onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-            className="relative overflow-hidden bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-2.5 rounded-full font-semibold text-xs sm:text-sm transition-all hover:scale-105 active:scale-95 shadow-lg shadow-indigo-600/25 hover:shadow-indigo-600/40 whitespace-nowrap"
-            suppressHydrationWarning
-          >
-            <span className="relative z-10">Sign In</span>
-            <span className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 hover:opacity-100 transition-opacity duration-300" />
-          </button>
-        )}
+
+          {/* Right section - Search, Notifications, Profile */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Search - hidden on mobile */}
+            <div className="hidden md:flex items-center gap-2 rounded-full border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-3 py-1.5 transition focus-within:border-indigo-500/50">
+              <Search className="h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search..."
+                className="bg-transparent text-sm text-gray-900 dark:text-white outline-none placeholder:text-gray-400 w-32 lg:w-48"
+              />
+            </div>
+
+            {/* Notifications */}
+            <div ref={notificationRef} className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5 transition-colors"
+                aria-label="Notifications"
+              >
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Notifications Dropdown */}
+              {showNotifications && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 mt-2 w-80 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111] shadow-2xl overflow-hidden z-50"
+                >
+                  <div className="flex items-center justify-between border-b border-gray-200 dark:border-white/10 px-4 py-3">
+                    <h3 className="font-semibold text-sm">Notifications</h3>
+                    <button className="text-xs text-indigo-500 hover:text-indigo-600 dark:text-indigo-400">
+                      Mark all read
+                    </button>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                        No notifications
+                      </div>
+                    ) : (
+                      notifications.map((notification) => (
+                        <div
+                          key={notification.id}
+                          className={`border-b border-gray-200 dark:border-white/5 px-4 py-3 transition hover:bg-gray-50 dark:hover:bg-white/5 ${
+                            !notification.read ? "bg-indigo-50/50 dark:bg-indigo-500/5" : ""
+                          }`}
+                        >
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {notification.title}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {notification.time}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div className="border-t border-gray-200 dark:border-white/10 px-4 py-2 text-center">
+                    <button className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                      View all notifications
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+
+            {/* Profile */}
+            <div ref={profileRef} className="relative">
+              <button
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className="flex items-center gap-2 md:gap-3 bg-gray-100 dark:bg-white/[0.04] border border-gray-300 dark:border-white/[0.08] py-1.5 pl-1.5 pr-3 md:pr-4 rounded-full hover:bg-gray-200 dark:hover:bg-white/[0.07] transition-all duration-200"
+                aria-label="Profile menu"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-sm font-semibold text-white">
+                  {session?.user?.name?.[0]?.toUpperCase() || "U"}
+                </div>
+                <div className="hidden md:block text-left">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white leading-tight">
+                    {session?.user?.name || "User"}
+                  </p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
+                    {session?.user?.email || "user@email.com"}
+                  </p>
+                </div>
+                <User className="hidden md:block h-4 w-4 text-gray-400" />
+              </button>
+
+              {/* Profile Dropdown */}
+              {showProfileMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 mt-2 w-56 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111] shadow-2xl overflow-hidden z-50"
+                >
+                  {/* User info */}
+                  <div className="px-4 py-3 border-b border-gray-200 dark:border-white/10">
+                    <p className="font-semibold text-sm text-gray-900 dark:text-white">
+                      {session?.user?.name || "User"}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      {session?.user?.email || "user@email.com"}
+                    </p>
+                  </div>
+
+                  {/* Menu items */}
+                  <div className="py-1">
+                    <Link
+                      href="/settings"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+                      onClick={() => setShowProfileMenu(false)}
+                    >
+                      <Settings className="h-4 w-4" />
+                      Settings
+                    </Link>
+                    <Link
+                      href="/about"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+                      onClick={() => setShowProfileMenu(false)}
+                    >
+                      <HelpCircle className="h-4 w-4" />
+                      About FlowMail AI
+                    </Link>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="border-t border-gray-200 dark:border-white/10" />
+
+                  {/* Logout */}
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      signOut({ callbackUrl: "/" });
+                    }}
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Logout
+                  </button>
+                </motion.div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
-    </motion.nav>
+    </header>
   );
 }
