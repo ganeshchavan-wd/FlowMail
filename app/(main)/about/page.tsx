@@ -12,6 +12,7 @@ import {
   animate,
 } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ShieldCheck, Lock, Eye } from "lucide-react";
 
 /* ---------------------- Inline SVG Icons ---------------------- */
 function GithubIcon({ className = "h-4 w-4" }: { className?: string }) {
@@ -189,6 +190,103 @@ function Counter({ to, suffix = "" }: { to: number; suffix?: string }) {
       {val.toLocaleString()}
       {suffix}
     </span>
+  );
+}
+
+/* ---------------------- Security & Privacy Card Component ---------------------- */
+function SecurityPrivacyCard() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+    >
+      <TiltCard
+        borderHover="hover:border-emerald-400/70"
+        glow="rgba(16,185,129,.25)"
+        className="p-8"
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-emerald-500/10 p-3 ring-1 ring-emerald-500/20">
+            <ShieldCheck className="h-7 w-7 text-emerald-400" />
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold text-white">
+              Security & Privacy
+            </h3>
+            <p className="text-sm text-zinc-400">
+              Your data is protected with enterprise-grade security.
+            </p>
+          </div>
+        </div>
+
+        {/* Features */}
+        <div className="mt-5 space-y-4">
+          <div className="flex items-start gap-3 rounded-lg p-2 hover:bg-white/5 transition-colors">
+            <Lock className="mt-1 h-5 w-5 text-indigo-400 flex-shrink-0" />
+            <div>
+              <h4 className="font-medium text-white text-sm">
+                Secure Authentication
+              </h4>
+              <p className="text-sm text-zinc-400 leading-relaxed">
+                Sign in securely using Google OAuth. Passwords are never stored by
+                FlowMail.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 rounded-lg p-2 hover:bg-white/5 transition-colors">
+            <ShieldCheck className="mt-1 h-5 w-5 text-emerald-400 flex-shrink-0" />
+            <div>
+              <h4 className="font-medium text-white text-sm">
+                Protected Data
+              </h4>
+              <p className="text-sm text-zinc-400 leading-relaxed">
+                Emails and calendar information are accessed only with your
+                permission and transmitted over encrypted HTTPS connections.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 rounded-lg p-2 hover:bg-white/5 transition-colors">
+            <Eye className="mt-1 h-5 w-5 text-sky-400 flex-shrink-0" />
+            <div>
+              <h4 className="font-medium text-white text-sm">
+                Your Privacy
+              </h4>
+              <p className="text-sm text-zinc-400 leading-relaxed">
+                We never sell your personal data. Access is limited to the features
+                you enable and can be revoked anytime from your Google Account.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-4 text-xs text-zinc-500">
+          <span>
+            By using FlowMail AI, you agree to our{" "}
+            <a href="/privacy" className="text-zinc-400 hover:text-white hover:underline transition-colors">
+              Privacy Policy
+            </a>{" "}
+            and{" "}
+            <a href="/terms" className="text-zinc-400 hover:text-white hover:underline transition-colors">
+              Terms of Service
+            </a>.
+          </span>
+          
+          <a 
+            href="/security" 
+            className="flex items-center gap-1 text-zinc-400 hover:text-white transition-colors"
+          >
+            Learn more →
+          </a>
+        </div>
+      </TiltCard>
+    </motion.div>
   );
 }
 
@@ -503,6 +601,28 @@ export default function AboutClient() {
               </motion.div>
             );
           })}
+        </div>
+      </section>
+
+      {/* Security & Privacy Section - NEW */}
+      <section className="mx-auto max-w-4xl px-6 py-24">
+        <FadeUp className="text-center">
+          <p className="font-semibold uppercase tracking-[0.3em] text-emerald-400">
+            Trust & Transparency
+          </p>
+          <h2 className="mt-4 text-4xl font-bold md:text-5xl">
+            Your Data is{" "}
+            <span className="bg-gradient-to-r from-emerald-400 to-cyan-500 bg-clip-text text-transparent">
+              Safe With Us
+            </span>
+          </h2>
+          <p className="mx-auto mt-6 max-w-3xl text-lg text-zinc-400">
+            We take security and privacy seriously. Here's how we protect your information.
+          </p>
+        </FadeUp>
+
+        <div className="mt-12">
+          <SecurityPrivacyCard />
         </div>
       </section>
 
