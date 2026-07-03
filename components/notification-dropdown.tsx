@@ -83,10 +83,9 @@ export default function NotificationDropdown({ onClose }: NotificationDropdownPr
         className="
           fixed
           top-16
-          right-4
-          left-auto
-          w-[95vw]
-          max-w-[420px]
+          right-0
+          w-[92vw]
+          max-w-[400px]
           sm:max-w-[380px]
           md:absolute
           md:left-auto
