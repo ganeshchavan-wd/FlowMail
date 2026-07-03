@@ -100,6 +100,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Store the old name for notification
+    const oldName = department.name;
+
     const updatedDepartment = await prisma.department.update({
       where: {
         id: departmentId,
@@ -108,6 +111,20 @@ export async function POST(req: NextRequest) {
         name,
       },
     });
+
+    // ✅ Create notification for department rename
+    try {
+      await prisma.notification.create({
+        data: {
+          title: `Department renamed from "${oldName}" to "${name}"`,
+          type: "department",
+          userEmail: session.user.email,
+        },
+      });
+    } catch (notifError) {
+      console.error("Failed to create notification:", notifError);
+      // Don't fail the request if notification fails
+    }
 
     return NextResponse.json({
       success: true,

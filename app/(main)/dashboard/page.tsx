@@ -25,6 +25,7 @@ export default function DashboardPage() {
   });
 
   const [recentEmails, setRecentEmails] = useState<any[]>([]);
+  const [checkingEmails, setCheckingEmails] = useState(false);
 
   // 1. Load data when the page mounts
   useEffect(() => {
@@ -57,6 +58,38 @@ export default function DashboardPage() {
       console.error("Failed to load dashboard:", error);
     }
   }
+
+  // ✅ Check for new emails function
+  const checkNewEmails = async () => {
+    if (checkingEmails) return;
+    
+    try {
+      setCheckingEmails(true);
+      console.log("📧 Checking for new emails...");
+      
+      const response = await fetch('/api/gmail/check-new');
+      const data = await response.json();
+      
+      console.log("Response:", data);
+      
+      if (data.success) {
+        if (data.count > 0) {
+          alert(`✅ Found ${data.count} new email(s)!\n\n${data.message}`);
+          // Refresh dashboard to update stats
+          loadDashboard();
+        } else {
+          alert(`📭 No new emails found.\n\n${data.message}`);
+        }
+      } else {
+        alert("❌ Error: " + data.error);
+      }
+    } catch (error) {
+      console.error("Error checking emails:", error);
+      alert("Error checking emails: " + error);
+    } finally {
+      setCheckingEmails(false);
+    }
+  };
 
   // 2. Function that returns the personalized brief
   function getDailyBrief() {
@@ -126,10 +159,25 @@ export default function DashboardPage() {
                 </p>
               </div>
 
-              <button className="group flex w-full sm:w-auto items-center justify-center gap-2 self-start sm:self-auto rounded-full bg-gray-900 dark:bg-white px-5 py-2.5 text-sm font-semibold text-white dark:text-black transition-transform hover:scale-[1.02]">
-                Compose with AI
-                <Sparkles className="h-4 w-4 transition-transform group-hover:rotate-12" />
-              </button>
+              {/* ✅ ADDED: Check New Emails Button */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={checkNewEmails}
+                  disabled={checkingEmails}
+                  className="group flex w-full sm:w-auto items-center justify-center gap-2 self-start sm:self-auto rounded-full bg-emerald-600 hover:bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {checkingEmails ? (
+                    <>⏳ Checking...</>
+                  ) : (
+                    <>📧 Check New Emails</>
+                  )}
+                </button>
+                
+                <button className="group flex w-full sm:w-auto items-center justify-center gap-2 self-start sm:self-auto rounded-full bg-gray-900 dark:bg-white px-5 py-2.5 text-sm font-semibold text-white dark:text-black transition-transform hover:scale-[1.02]">
+                  Compose with AI
+                  <Sparkles className="h-4 w-4 transition-transform group-hover:rotate-12" />
+                </button>
+              </div>
             </motion.div>
 
             {/* Stat grid */}
@@ -310,4 +358,4 @@ export default function DashboardPage() {
       </div>
     </div>
   );
-} 
+}

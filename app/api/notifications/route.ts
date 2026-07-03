@@ -1,6 +1,5 @@
 import { getServerSession } from "next-auth";
-import { google } from "googleapis";
-import { authOptions } from "../auth/[...nextauth]/route";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 
@@ -8,96 +7,61 @@ const prisma = new PrismaClient();
 
 export async function GET() {
   try {
-    const session: any = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions);
 
-    if (!session?.accessToken) {
-      return NextResponse.json({
-        notifications: [],
-      });
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
-    const oauth2Client = new google.auth.OAuth2();
+    console.log(`🔔 Fetching notifications for: ${session.user.email}`);
 
-    oauth2Client.setCredentials({
-      access_token: session.accessToken,
-    });
-
-    const gmail = google.gmail({
-      version: "v1",
-      auth: oauth2Client,
-    });
-
-    const calendar = google.calendar({
-      version: "v3",
-      auth: oauth2Client,
-    });
-
-    // Gmail
-    const unread = await gmail.users.messages.list({
-      userId: "me",
-      q: "is:unread",
-    });
-
-    const important = await gmail.users.messages.list({
-      userId: "me",
-      q: "is:important",
-    });
-
-    // Calendar
-    const meetings = await calendar.events.list({
-      calendarId: "primary",
-      timeMin: new Date().toISOString(),
-      maxResults: 5,
-      singleEvents: true,
-      orderBy: "startTime",
-    });
-
-    // AI Activity
-    const aiActions = await prisma.aIActivity.count({
+    const notifications = await prisma.notification.findMany({
       where: {
         userEmail: session.user.email,
       },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 50,
     });
 
-    const notifications = [];
+    console.log(`✅ Found ${notifications.length} notifications`);
 
-    if ((unread.data.resultSizeEstimate || 0) > 0) {
-      notifications.push({
-        title: `${unread.data.resultSizeEstimate} unread emails`,
-        type: "mail",
-      });
-    }
-
-    if ((important.data.resultSizeEstimate || 0) > 0) {
-      notifications.push({
-        title: `${important.data.resultSizeEstimate} important emails`,
-        type: "important",
-      });
-    }
-
-    if ((meetings.data.items?.length || 0) > 0) {
-      notifications.push({
-        title: `${meetings.data.items?.length} upcoming meetings`,
-        type: "meeting",
-      });
-    }
-
-    if (aiActions > 0) {
-      notifications.push({
-        title: `${aiActions} AI actions completed`,
-        type: "ai",
-      });
-    }
+    const formatted = notifications.map((n) => ({
+      id: n.id,
+      title: n.title,
+      type: n.type,
+      isRead: n.isRead,
+      createdAt: n.createdAt,
+      time: getTimeAgo(n.createdAt),
+    }));
 
     return NextResponse.json({
-      notifications,
+      success: true,
+      notifications: formatted,
     });
-
   } catch (error) {
-    console.error(error);
-
-    return NextResponse.json({
-      notifications: [],
-    });
+    console.error("❌ Error fetching notifications:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to fetch notifications" },
+      { status: 500 }
+    );
   }
+}
+
+function getTimeAgo(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins} min ago`;
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+  return date.toLocaleDateString();
 }

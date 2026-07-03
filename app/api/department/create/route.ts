@@ -107,6 +107,14 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    await prisma.notification.create({
+  data: {
+    title: `Department "${name}" created successfully`,
+    type: "department",
+    userEmail: session.user.email,
+  },
+});
+
     // Save Members
     await prisma.departmentMember.createMany({
       data: emails.map((email) => ({

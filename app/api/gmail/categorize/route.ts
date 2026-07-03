@@ -34,6 +34,20 @@ export async function GET() {
 
     const messages = list.data.messages || [];
 
+    if (messages.length === 0) {
+      return Response.json({
+        success: true,
+        data: {
+          urgent: [],
+          important: [],
+          jobs: [],
+          meetings: [],
+          promotions: [],
+          social: [],
+        },
+      });
+    }
+
     const emails = await Promise.all(
       messages.map(async (msg) => {
         const email = await gmail.users.messages.get({
@@ -138,44 +152,58 @@ ${JSON.stringify(emails, null, 2)}
     }
 
     // Clean and parse JSON
+    let categoryData;
+    let warning = null;
+
     try {
       const cleaned = text
         .replace(/```json/g, "")
         .replace(/```/g, "")
         .trim();
 
-      const categories = JSON.parse(cleaned);
+      categoryData = JSON.parse(cleaned);
 
       // Validate the structure has all required fields
       const requiredFields = ['urgent', 'important', 'jobs', 'meetings', 'promotions', 'social'];
-      const hasAllFields = requiredFields.every(field => field in categories);
+      const hasAllFields = requiredFields.every(field => field in categoryData);
       
       if (!hasAllFields) {
         throw new Error('Missing required fields in response');
       }
-
-      return Response.json({
-        success: true,
-        data: categories,
-      });
     } catch (parseError) {
       console.error("Invalid JSON from Gemini");
       console.error("Raw response:", text);
 
-      // Return fallback structure
-      return Response.json({
-        success: true,
-        data: {
-          urgent: [],
-          important: [],
-          jobs: [],
-          meetings: [],
-          promotions: [],
-          social: [],
-        },
-        warning: "Failed to parse AI response, using fallback data",
-      });
+      categoryData = {
+        urgent: [],
+        important: [],
+        jobs: [],
+        meetings: [],
+        promotions: [],
+        social: [],
+      };
+      warning = "Failed to parse AI response, using fallback data";
     }
+
+    // ✅ Create notification for successful categorization
+    try {
+      await prisma.notification.create({
+        data: {
+          title: "Emails categorized successfully",
+          type: "ai",
+          userEmail: session.user.email || "",
+        },
+      });
+    } catch (notifError) {
+      console.error("Failed to create notification:", notifError);
+      // Don't fail the request if notification fails
+    }
+
+    return Response.json({
+      success: true,
+      data: categoryData,
+      warning: warning,
+    });
   } catch (error: any) {
     console.error("Error in taxonomy categorization:", error);
     

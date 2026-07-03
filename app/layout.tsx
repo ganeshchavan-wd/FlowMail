@@ -1,6 +1,7 @@
 import "./globals.css";
 import Providers from "../components/providers";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import DevWarningSuppressor from "@/components/DevWarningSuppressor";
 
 export const metadata = {
   title: "FlowMail AI",
@@ -14,7 +15,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white transition-colors duration-300">
+      <body 
+        suppressHydrationWarning 
+        className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white transition-colors duration-300"
+      >
+        <DevWarningSuppressor />
         <Providers>
           <ThemeProvider>
             {children}

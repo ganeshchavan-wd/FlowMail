@@ -1,5 +1,6 @@
 "use client";
 
+import ToggleSwitch from "@/components/ToggleSwitch";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
@@ -14,10 +15,15 @@ import {
   CheckCircle2,
   Loader2
 } from "lucide-react";
-import ToggleSwitch from "@/components/ToggleSwitch";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function SettingsPage() {
-  const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
+  const { theme, toggleTheme } = useTheme();
+  
+  // Track which theme option is selected (including "system")
+  const [selectedThemeOption, setSelectedThemeOption] = useState<"light" | "dark" | "system">("system");
+  
+  // Local state for settings
   const [notifications, setNotifications] = useState(true);
   const [emailSync, setEmailSync] = useState(true);
   const [calendarSync, setCalendarSync] = useState(true);
@@ -31,7 +37,10 @@ export default function SettingsPage() {
     if (savedSettings) {
       try {
         const settings = JSON.parse(savedSettings);
-        setTheme(settings.theme || "system");
+        // Load theme preference
+        if (settings.themePreference) {
+          setSelectedThemeOption(settings.themePreference);
+        }
         setNotifications(settings.notifications !== undefined ? settings.notifications : true);
         setEmailSync(settings.emailSync !== undefined ? settings.emailSync : true);
         setCalendarSync(settings.calendarSync !== undefined ? settings.calendarSync : true);
@@ -42,24 +51,58 @@ export default function SettingsPage() {
     }
   }, []);
 
+  // Sync selectedThemeOption with actual theme when it changes
+  useEffect(() => {
+    // If the selected option is "system", we need to check system preference
+    if (selectedThemeOption === "system") {
+      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const systemTheme = isDark ? "dark" : "light";
+      // Only toggle if different from current theme
+      if (systemTheme !== theme) {
+        toggleTheme();
+      }
+    }
+    // If the selected option matches the current theme, do nothing
+    // If not, toggle to match
+    else if (selectedThemeOption !== theme) {
+      toggleTheme();
+    }
+  }, [selectedThemeOption]);
+
+  const handleThemeChange = (option: "light" | "dark" | "system") => {
+    setSelectedThemeOption(option);
+    
+    // Immediately apply the theme
+    if (option === "system") {
+      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const systemTheme = isDark ? "dark" : "light";
+      if (systemTheme !== theme) {
+        toggleTheme();
+      }
+    } else {
+      if (option !== theme) {
+        toggleTheme();
+      }
+    }
+    
+    // Save preference
+    const settings = JSON.parse(localStorage.getItem("flowmail-settings") || "{}");
+    settings.themePreference = option;
+    localStorage.setItem("flowmail-settings", JSON.stringify(settings));
+  };
+
   const saveSettings = async () => {
     setSaving(true);
     setSaved(false);
     
-    // Apply theme immediately
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else if (theme === "light") {
-      document.documentElement.classList.remove("dark");
-    } else {
-      if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-    }
-
-    const settings = { theme, notifications, emailSync, calendarSync, aiAssist };
+    // Save all settings to localStorage
+    const settings = { 
+      themePreference: selectedThemeOption,
+      notifications, 
+      emailSync, 
+      calendarSync, 
+      aiAssist 
+    };
     localStorage.setItem("flowmail-settings", JSON.stringify(settings));
 
     await new Promise(resolve => setTimeout(resolve, 800));
@@ -67,6 +110,11 @@ export default function SettingsPage() {
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
+  };
+
+  // Check if a theme option is currently selected
+  const isThemeSelected = (option: "light" | "dark" | "system") => {
+    return selectedThemeOption === option;
   };
 
   return (
@@ -118,16 +166,16 @@ export default function SettingsPage() {
                 ].map((option) => (
                   <button
                     key={option.value}
-                    onClick={() => setTheme(option.value as typeof theme)}
+                    onClick={() => handleThemeChange(option.value as "light" | "dark" | "system")}
                     className={`flex w-full items-center gap-3 rounded-xl border p-3 transition ${
-                      theme === option.value
+                      isThemeSelected(option.value as "light" | "dark" | "system")
                         ? "border-purple-500/50 bg-purple-500/10 dark:bg-purple-500/5"
                         : "border-gray-200 dark:border-white/5 hover:border-gray-300 dark:hover:border-white/10"
                     }`}
                   >
                     <option.icon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                     <span className="text-sm text-gray-700 dark:text-white/80">{option.label}</span>
-                    {theme === option.value && (
+                    {isThemeSelected(option.value as "light" | "dark" | "system") && (
                       <CheckCircle2 className="ml-auto h-4 w-4 text-purple-500" />
                     )}
                   </button>

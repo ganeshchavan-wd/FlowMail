@@ -2,6 +2,9 @@ import { getServerSession } from "next-auth";
 import { google } from "googleapis";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { authOptions } from "../../auth/[...nextauth]/route";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 export async function GET() {
   const session: any = await getServerSession(authOptions);
@@ -30,6 +33,22 @@ export async function GET() {
     });
 
     const messages = list.data.messages || [];
+
+    if (messages.length === 0) {
+      return Response.json({
+        success: true,
+        data: {
+          overview: {
+            totalEmails: 0,
+            summary: "No emails found in your inbox.",
+          },
+          important: [],
+          urgent: [],
+          meetings: [],
+          summary: ["Your inbox is empty!"],
+        },
+      });
+    }
 
     const emails = await Promise.all(
       messages.map(async (msg) => {
@@ -120,38 +139,53 @@ ${emails.join("\n")}
     const text = result.response.text();
 
     // Clean and parse JSON
+    let summaryData;
+    let warning = null;
+
     try {
       const cleaned = text
         .replace(/```json/g, "")
         .replace(/```/g, "")
         .trim();
 
-      const summary = JSON.parse(cleaned);
-
-      return Response.json({
-        success: true,
-        data: summary,
-      });
+      summaryData = JSON.parse(cleaned);
     } catch (parseError) {
       console.error("Invalid JSON from Gemini");
       console.error("Raw response:", text);
       
       // Return a fallback structure if parsing fails
-      return Response.json({
-        success: true,
-        data: {
-          overview: {
-            totalEmails: emails.length,
-            summary: "Unable to parse AI response. Please try again.",
-          },
-          important: [],
-          urgent: [],
-          meetings: [],
-          summary: ["Error processing emails. Please refresh and try again."],
+      summaryData = {
+        overview: {
+          totalEmails: emails.length,
+          summary: "AI response parsing failed. Please try again.",
         },
-        warning: "Failed to parse AI response, using fallback data",
-      });
+        important: [],
+        urgent: [],
+        meetings: [],
+        summary: ["Unable to generate summary. Please refresh and try again."],
+      };
+      warning = "Failed to parse AI response, using fallback data";
     }
+
+    // ✅ Create notification for successful summary
+    try {
+      await prisma.notification.create({
+        data: {
+          title: "Inbox summarized successfully",
+          type: "ai",
+          userEmail: session.user.email || "",
+        },
+      });
+    } catch (notifError) {
+      console.error("Failed to create notification:", notifError);
+      // Don't fail the request if notification fails
+    }
+
+    return Response.json({
+      success: true,
+      data: summaryData,
+      warning: warning,
+    });
   } catch (error: any) {
     console.error("Error in email analysis:", error);
     

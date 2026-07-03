@@ -119,6 +119,16 @@ export async function POST(request: Request) {
           attendees
         );
 
+        // ✅ Notification: Meeting scheduled
+       await prisma.notification.create({
+  data: {
+    title: `Meeting "${meeting.title}" scheduled`,
+    type: "meeting",
+    userEmail: session.user.email,
+    isRead: false, // Optional, defaults to false
+  },
+});
+
         await Promise.all(
           attendees.map(async (email) => {
             await fetch(
@@ -202,6 +212,15 @@ ${JSON.stringify(
 
     // Normal Gemini chat
     const reply = await askGemini(message);
+
+    // ✅ Notification: AI chat response
+    await prisma.notification.create({
+      data: {
+        title: "AI Assistant responded to your query",
+        type: "ai",
+        userEmail: (await getServerSession(authOptions))?.user?.email || "",
+      },
+    });
 
     return Response.json({
       reply,

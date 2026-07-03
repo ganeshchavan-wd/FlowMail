@@ -44,6 +44,18 @@ export async function POST(req: NextRequest) {
 
     const { departmentId } = await req.json();
 
+    if (!departmentId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Department ID is required",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
     // Verify the department belongs to this user
     const department = await prisma.department.findFirst({
       where: {
@@ -62,6 +74,23 @@ export async function POST(req: NextRequest) {
           status: 404,
         }
       );
+    }
+
+    // Store department name for notification
+    const departmentName = department.name;
+
+    // ✅ Create notification BEFORE deletion
+    try {
+      await prisma.notification.create({
+        data: {
+          title: `Department "${departmentName}" deleted`,
+          type: "department",
+          userEmail: session.user.email,
+        },
+      });
+    } catch (notifError) {
+      console.error("Failed to create notification:", notifError);
+      // Don't fail the request if notification fails
     }
 
     // Delete related records
@@ -85,6 +114,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      message: `Department "${departmentName}" deleted successfully`,
     });
   } catch (error) {
     console.error(error);
