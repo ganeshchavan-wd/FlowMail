@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
 import { useState, useEffect, useRef } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
@@ -44,7 +45,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
   // Fetch notifications
   const fetchNotifications = async () => {
     try {
-      const response = await fetch("/api/notifications");
+      const response = await apiFetch("/api/notifications");
       const data = await response.json();
       if (data.success) {
         setNotifications(data.notifications || []);
@@ -59,7 +60,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
     if (checkingEmails) return;
     try {
       setCheckingEmails(true);
-      const response = await fetch("/api/gmail/check-new");
+      const response = await apiFetch("/api/gmail/check-new");
       const data = await response.json();
       if (data.success && data.count > 0) {
         await fetchNotifications();
@@ -107,7 +108,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
   // Mark all notifications as read
   const markAllRead = async () => {
     try {
-      const response = await fetch("/api/notifications/read", {
+      const response = await apiFetch("/api/notifications/read", {
         method: "POST",
       });
       const data = await response.json();

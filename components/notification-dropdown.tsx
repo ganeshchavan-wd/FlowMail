@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
 import { useEffect, useState } from "react";
 import {
   Mail,
@@ -30,7 +31,7 @@ export default function NotificationDropdown({ onClose }: NotificationDropdownPr
 
   async function loadNotifications() {
     try {
-      const res = await fetch("/api/notifications");
+      const res = await apiFetch("/api/notifications");
       const data = await res.json();
 
       const list = (data.notifications || []).map((n: Notification) => ({

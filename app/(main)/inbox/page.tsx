@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence, useMotionValue, useMotionTemplate } from "framer-motion";
 import EmailCard from "@/components/email-card";
@@ -105,7 +106,7 @@ export default function InboxPage() {
   useEffect(() => {
     const loadEmails = async () => {
       try {
-        const res = await fetch("/api/gmail/messages");
+        const res = await apiFetch("/api/gmail/messages");
         const data = await res.json();
         if (data.success) setEmails(data.emails);
       } catch (error) { 
@@ -121,7 +122,7 @@ export default function InboxPage() {
     try {
       setSummarizing(true);
       setSummaryError(null);
-      const res = await fetch("/api/gmail/summarize");
+      const res = await apiFetch("/api/gmail/summarize");
       const data = await res.json();
       
       if (data.success) {
@@ -164,7 +165,7 @@ export default function InboxPage() {
     try {
       setCategorizing(true);
       setCategoriesError(null);
-      const res = await fetch("/api/gmail/categorize");
+      const res = await apiFetch("/api/gmail/categorize");
       const data = await res.json();
       
       if (data.success) {

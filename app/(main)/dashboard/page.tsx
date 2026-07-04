@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
@@ -40,7 +41,7 @@ export default function DashboardPage() {
 
   async function loadDashboard() {
     try {
-      const res = await fetch("/api/dashboard/stats");
+      const res = await apiFetch("/api/dashboard/stats");
       const data = await res.json();
 
       setStats({

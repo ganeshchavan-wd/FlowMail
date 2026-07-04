@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
@@ -114,7 +115,7 @@ const createDepartment = async () => {
   }
 
   try {
-    const response = await fetch("/api/department/create", {
+    const response = await apiFetch("/api/department/create", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

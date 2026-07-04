@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
 import { useEffect, useState } from "react";
 import { X, Mail, Users, FileText, Plus, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -32,7 +33,7 @@ export default function DepartmentDetailsModal({
   async function deleteEmail(memberId: string) {
     if (!confirm("Delete this email?")) return;
     try {
-      const res = await fetch("/api/department/delete-email", {
+      const res = await apiFetch("/api/department/delete-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ memberId }),
@@ -61,7 +62,7 @@ export default function DepartmentDetailsModal({
       return;
     }
     try {
-      const res = await fetch("/api/department/add-email", {
+      const res = await apiFetch("/api/department/add-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

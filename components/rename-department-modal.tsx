@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Pencil } from "lucide-react";
@@ -35,7 +36,7 @@ export default function RenameDepartmentModal({
     try {
       setLoading(true);
 
-      const res = await fetch("/api/department/rename", {
+      const res = await apiFetch("/api/department/rename", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

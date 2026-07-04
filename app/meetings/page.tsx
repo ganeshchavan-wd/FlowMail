@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
 import { useState } from "react";
 
 export default function MeetingsPage() {
@@ -10,7 +11,7 @@ const [end, setEnd] = useState("");
 const [attendees, setAttendees] = useState("");
 
 const createMeeting = async () => {
-const res = await fetch("/api/calendar/create", {
+const res = await apiFetch("/api/calendar/create", {
 method: "POST",
 headers: {
 "Content-Type": "application/json",

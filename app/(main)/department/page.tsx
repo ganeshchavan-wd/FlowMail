@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -31,7 +32,7 @@ export default function DepartmentPage() {
   const router = useRouter();
 
   const loadDepartments = async () => {
-    const res = await fetch("/api/department/list");
+    const res = await apiFetch("/api/department/list");
     const data = await res.json();
     setDepartments(data);
   };
@@ -42,7 +43,7 @@ export default function DepartmentPage() {
     );
     if (!ok) return;
     try {
-      const res = await fetch("/api/department/delete", {
+      const res = await apiFetch("/api/department/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ departmentId: id }),

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { apiFetch } from "@/lib/api";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -192,7 +194,7 @@ export default function AIPage() {
 
     // If email-related, proceed with the API call
     try {
-      const response = await fetch("/api/chat", { 
+      const response = await apiFetch("/api/chat", { 
         method: "POST", 
         headers: { "Content-Type": "application/json" }, 
         body: JSON.stringify({ message: userMessage }) 
