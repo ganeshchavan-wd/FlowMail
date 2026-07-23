@@ -85,6 +85,8 @@ export default function InboxPage() {
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [categoryEmails, setCategoryEmails] = useState<any[]>([]);
 
   // Local UX enhancement states
   const [activeFilter, setActiveFilter] = useState<"all" | "unread" | "priority">("all");
@@ -208,6 +210,26 @@ export default function InboxPage() {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedEmail(null);
+  };
+
+  const handleCategoryClick = (title: string, items: any[]) => {
+    const matchedEmails = items
+      .map((item: any) =>
+        emails.find(
+          (email) =>
+            email.subject.trim().toLowerCase() ===
+            item.subject?.trim().toLowerCase()
+        )
+      )
+      .filter(Boolean);
+
+    setSelectedCategory(title);
+    setCategoryEmails(matchedEmails);
+  };
+
+  const closeCategoryModal = () => {
+    setSelectedCategory(null);
+    setCategoryEmails([]);
   };
 
   const filteredEmails = useMemo(() => {
@@ -476,9 +498,8 @@ export default function InboxPage() {
                 <div className="group relative overflow-hidden rounded-2xl border border-emerald-300 dark:border-emerald-500/10 bg-emerald-50/50 dark:bg-gradient-to-b from-neutral-900/40 to-neutral-950/60 p-4 sm:p-5 lg:p-6 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.02)] backdrop-blur-xl max-h-[600px] overflow-y-auto">
                   <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-emerald-500/[0.03] blur-xl group-hover:bg-emerald-500/[0.06] transition-colors" />
                   <div className="mb-3 flex items-center justify-between sticky top-0 bg-emerald-50/80 dark:bg-neutral-900/80 backdrop-blur-sm py-2 -mt-2 px-1 z-10">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-                      <SlidersHorizontal className="h-3.5 w-3.5" />
-                      Taxonomy Segments
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                      Email Categories
                     </h3>
                     <span className="text-[10px] font-mono text-gray-500 dark:text-neutral-500">Sorted</span>
                   </div>
@@ -504,19 +525,25 @@ export default function InboxPage() {
                       
                       <div className="space-y-5">
                         {[
-                          ["🔥 Urgent", "urgent", "text-red-500 dark:text-red-400"],
-                          ["⭐ Important", "important", "text-yellow-500 dark:text-yellow-400"],
-                          ["💼 Jobs", "jobs", "text-cyan-500 dark:text-cyan-400"],
-                          ["📅 Meetings", "meetings", "text-green-500 dark:text-green-400"],
-                          ["📢 Promotions", "promotions", "text-pink-500 dark:text-pink-400"],
-                          ["👥 Social", "social", "text-purple-500 dark:text-purple-400"]
+                          ["Urgent", "urgent", "text-red-500 dark:text-red-400"],
+                          ["Important", "important", "text-yellow-500 dark:text-yellow-400"],
+                          ["Jobs", "jobs", "text-cyan-500 dark:text-cyan-400"],
+                          ["Meetings", "meetings", "text-green-500 dark:text-green-400"],
+                          ["Promotions", "promotions", "text-pink-500 dark:text-pink-400"],
+                          ["Social", "social", "text-purple-500 dark:text-purple-400"]
                         ].map(([title, key, color]) => {
                           const items = categories[key as keyof CategoryData] ?? [];
                           return (
                             <div key={key}>
-                              <h4 className={`font-semibold ${color}`}>
-                                {title} <span className="text-xs font-normal text-gray-500">({items.length})</span>
-                              </h4>
+                              <button
+                                onClick={() => handleCategoryClick(title as string, items)}
+                                className={`font-semibold ${color} hover:underline cursor-pointer`}
+                              >
+                                {title}
+                                <span className="text-xs font-normal text-gray-500">
+                                  ({items.length})
+                                </span>
+                              </button>
                               <div className="mt-2 space-y-2">
                                 {items.length === 0 ? (
                                   <div className="text-xs text-neutral-500 dark:text-neutral-400">
@@ -652,6 +679,91 @@ export default function InboxPage() {
         onClose={handleCloseModal}
         email={selectedEmail}
       />
+
+      {/* Category Modal - FIXED VERSION */}
+      <AnimatePresence>
+        {selectedCategory && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={closeCategoryModal}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 40 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 40 }}
+              transition={{ duration: 0.25 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-[90%] max-w-2xl max-h-[80vh] overflow-y-auto rounded-2xl bg-white dark:bg-neutral-900 p-6 shadow-2xl"
+            >
+              {/* Fixed: Changed from </motion.div> to </div> */}
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h2 className="text-2xl font-bold">
+                    {selectedCategory}
+                  </h2>
+                  <p className="text-sm text-gray-500">
+                    {categoryEmails.length} Emails
+                  </p>
+                </div>
+
+                <button
+                  onClick={closeCategoryModal}
+                  className="text-2xl font-bold hover:text-red-500 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {categoryEmails.length === 0 ? (
+                <div className="flex flex-col items-center py-12">
+                  <span className="text-5xl">📭</span>
+                  <h3 className="mt-4 text-lg font-semibold">
+                    No Emails Found
+                  </h3>
+                  <p className="mt-2 text-sm text-gray-500">
+                    This category doesn't contain any emails.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {categoryEmails.map((mail: any, index) => (
+                    <div
+                      key={index}
+                      className="rounded-2xl border border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 p-5 hover:shadow-xl hover:scale-[1.02] transition-all duration-300"
+                    >
+                      <h3 className="font-semibold text-lg">
+                        {mail.subject}
+                      </h3>
+
+                      <p className="text-sm text-gray-500 mt-1">
+                        {mail.from}
+                      </p>
+
+                      <p className="mt-3 text-sm text-gray-700 dark:text-gray-300 line-clamp-3">
+                        {mail.snippet}
+                      </p>
+
+                      <button
+                        onClick={() => {
+                          setSelectedEmail(mail);
+                          setIsModalOpen(true);
+                          closeCategoryModal();
+                        }}
+                        className="mt-4 rounded-xl bg-indigo-600 px-5 py-2 text-white hover:bg-indigo-700 transition-all"
+                      >
+                        View Email →
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
