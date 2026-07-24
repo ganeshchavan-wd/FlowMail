@@ -33,9 +33,9 @@ export default function Logo() {
       </div>
 
       {/* Brand Name */}
-      <span className="text-2xl font-bold tracking-tighter text-gray-900 dark:text-white">
-        Flow<span className="text-indigo-500 dark:text-indigo-400">Mail</span>
-      </span>
+      <span className="text-2xl font-bold tracking-tight bg-gradient-to-r from-white to-indigo-400 bg-clip-text text-transparent">
+  FlowMail
+</span>
     </Link>
   );
 }
