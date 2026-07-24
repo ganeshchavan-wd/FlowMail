@@ -114,13 +114,15 @@ export default function LoginPage() {
 
             <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4">
               <h3 className="text-white font-semibold text-center">
-                Secure AI Gmail Assistant
+                <h3 className="text-white font-semibold text-center">
+  FlowMail – AI Powered Gmail & Calendar Assistant
+</h3>
               </h3>
 
               <p className="mt-2 text-xs text-zinc-400 text-center leading-6">
-                FlowMail AI securely connects to your Gmail account to provide AI-powered
-                email summaries, smart categorization, intelligent search, meeting
-                detection, and reply assistance.
+                FlowMail securely connects to your Google account to summarize Gmail emails, organize messages, generate AI replies, 
+                detect meetings, search emails intelligently, and manage your Google Calendar.
+                 Google account access is requested only after your permission through Google OAuth.
               </p>
 
               <p className="mt-3 text-[11px] text-zinc-500 text-center">
