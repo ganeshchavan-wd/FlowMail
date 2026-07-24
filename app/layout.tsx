@@ -8,6 +8,10 @@ import type { Metadata, Viewport } from "next";
 export const metadata: Metadata = {
   title: "FlowMail AI",
   description: "AI Powered Email & Calendar Assistant",
+
+  verification: {
+    google: "7SLqB3WjrXLj3JXeHv4_0VxyXGdxxsFUc0wWR7ClO5c",
+  },
 };
 
 export const viewport: Viewport = {
