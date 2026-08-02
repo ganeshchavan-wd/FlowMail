@@ -1,18 +1,10 @@
-import { PrismaClient } from "@prisma/client";
+import { db } from "@/lib/db";
 
-const prisma = new PrismaClient();
-
-export async function findDepartment(
-  userInput: string,
-  userId: string
-) {
-  const departments = await prisma.department.findMany({
-    where: {
-      userId,
-    },
-    include: {
-      members: true,
-    },
+// Uses the singleton db client instead of a new PrismaClient() (fixes issue #9)
+export async function findDepartment(userInput: string, userId: string) {
+  const departments = await db.department.findMany({
+    where: { userId },
+    include: { members: true },
   });
 
   const input = userInput.toLowerCase();

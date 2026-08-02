@@ -25,6 +25,7 @@ interface Email {
   subject: string;
   snippet: string;
   body?: string;
+  labelIds?: string[]; // Gmail label IDs — used for unread/priority filtering (fixes issue #8)
 }
 
 // Type definitions for structured data
@@ -234,13 +235,24 @@ export default function InboxPage() {
 
   const filteredEmails = useMemo(() => {
     return emails.filter((email) => {
-      const matchesSearch = 
+      // Fix issue #8: activeFilter was never used — now properly filters emails
+      const matchesFilter =
+        activeFilter === "all"
+          ? true
+          : activeFilter === "unread"
+          ? email.labelIds?.includes("UNREAD") ?? false
+          : activeFilter === "priority"
+          ? email.labelIds?.includes("IMPORTANT") ?? false
+          : true;
+
+      const matchesSearch =
         email.from.toLowerCase().includes(searchQuery.toLowerCase()) ||
         email.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
         email.snippet.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesSearch;
+
+      return matchesFilter && matchesSearch;
     });
-  }, [emails, searchQuery]);
+  }, [emails, searchQuery, activeFilter]);
 
   return (
     <div 

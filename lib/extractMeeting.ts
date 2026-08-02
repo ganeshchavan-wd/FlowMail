@@ -1,6 +1,8 @@
 import { askGemini } from "./gemini";
 
 export async function extractMeeting(message: string) {
+  const tomorrowDate = getTomorrowDate();
+
   const prompt = `
 Extract meeting details from this message:
 
@@ -21,7 +23,7 @@ Rules:
 - title: Extract the main purpose of the meeting. If not specified, use "Meeting".
 - departments: Array of department names mentioned. If no departments, use [].
 - attendees: Array of email addresses mentioned. If no emails, use [].
-- date: Use YYYY-MM-DD format. If not specified, use tomorrow's date.
+- date: Use YYYY-MM-DD format. If not specified, use tomorrow's date (${tomorrowDate}).
 - time: Use HH:MM format (24-hour). If not specified, use "10:00".
 - duration: Meeting duration in minutes. Default to 30 if not specified.
 
@@ -30,81 +32,46 @@ Important:
 - attendees should contain ONLY email addresses (not department names).
 - Extract ALL departments and emails mentioned in the message.
 
-Examples:
-
-Input: "Schedule meeting tomorrow at 4 PM with CSE Department and ganesh@gmail.com"
-Output: {
-  "title": "Meeting",
-  "departments": ["CSE"],
-  "attendees": ["ganesh@gmail.com"],
-  "date": "2026-07-03",
-  "time": "16:00",
-  "duration": 30
-}
-
-Input: "Project review with Engineering and HR teams, invite john@company.com"
-Output: {
-  "title": "Project Review",
-  "departments": ["Engineering", "HR"],
-  "attendees": ["john@company.com"],
-  "date": "2026-07-03",
-  "time": "10:00",
-  "duration": 30
-}
-
-Input: "Schedule meeting with Finance"
-Output: {
-  "title": "Meeting",
-  "departments": ["Finance"],
-  "attendees": [],
-  "date": "2026-07-03",
-  "time": "10:00",
-  "duration": 30
-}
-
-Return ONLY the JSON object. No additional text or explanation.
+Return ONLY the JSON object. No additional text, explanation, or markdown code blocks.
 `;
 
-let response = "";
+  // Fix issue #6: single variable so the catch block can log the real response
+  let rawResponse = "";
   try {
-    const response = await askGemini(prompt);
-    
-    // Clean the response (remove markdown code blocks if present)
-    let cleanedResponse = response.trim();
-    if (cleanedResponse.startsWith("```json")) {
-      cleanedResponse = cleanedResponse.replace(/```json\s*/, "").replace(/```\s*$/, "");
-    } else if (cleanedResponse.startsWith("```")) {
-      cleanedResponse = cleanedResponse.replace(/```\s*/, "").replace(/```\s*$/, "");
+    rawResponse = await askGemini(prompt);
+
+    let cleaned = rawResponse.trim();
+    if (cleaned.startsWith("```json")) {
+      cleaned = cleaned.replace(/```json\s*/, "").replace(/```\s*$/, "");
+    } else if (cleaned.startsWith("```")) {
+      cleaned = cleaned.replace(/```\s*/, "").replace(/```\s*$/, "");
     }
-    
-    const parsed = JSON.parse(cleanedResponse);
-    
-    // Ensure all required fields exist
+
+    const parsed = JSON.parse(cleaned);
+
     return {
       title: parsed.title || "Meeting",
       departments: parsed.departments || [],
       attendees: parsed.attendees || [],
-      date: parsed.date || getTomorrowDate(),
+      date: parsed.date || tomorrowDate,
       time: parsed.time || "10:00",
       duration: parsed.duration || 30,
     };
   } catch (error) {
     console.error("Failed to parse meeting data:", error);
-    console.error("Raw response:", response);
-    
-    // Return defaults
+    console.error("Raw Gemini response:", rawResponse); // now actually logs the response
+
     return {
       title: "Meeting",
       departments: [],
       attendees: [],
-      date: getTomorrowDate(),
+      date: tomorrowDate,
       time: "10:00",
       duration: 30,
     };
   }
 }
 
-// Helper function to get tomorrow's date in YYYY-MM-DD format
 function getTomorrowDate(): string {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);

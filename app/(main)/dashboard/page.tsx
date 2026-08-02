@@ -2,7 +2,8 @@
 
 import { apiFetch } from "@/lib/api";
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   Mail,
@@ -13,8 +14,31 @@ import {
   CheckCircle2,
 } from "lucide-react";
 
+// Lightweight inline toast — replaces alert() which blocks the UI and breaks
+// the Capacitor WebView on Android (fixes issue #11)
+function Toast({
+  message,
+  onClose,
+}: {
+  message: string;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 4000);
+    return () => clearTimeout(t);
+  }, [onClose]);
+
+  return (
+    <div className="fixed bottom-6 right-6 z-50 max-w-sm rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-zinc-900 px-5 py-4 shadow-2xl text-sm text-gray-800 dark:text-white">
+      {message}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const { data: session } = useSession();
+  const router = useRouter();
+
   const [stats, setStats] = useState({
     emails: 0,
     unread: 0,
@@ -27,23 +51,12 @@ export default function DashboardPage() {
 
   const [recentEmails, setRecentEmails] = useState<any[]>([]);
   const [checkingEmails, setCheckingEmails] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
-  // 1. Load data when the page mounts
-  useEffect(() => {
-    loadDashboard();
-
-    const interval = setInterval(() => {
-      loadDashboard();
-    }, 30000); // every 30 seconds
-
-    return () => clearInterval(interval);
-  }, []);
-
-  async function loadDashboard() {
+  const loadDashboard = useCallback(async () => {
     try {
       const res = await apiFetch("/api/dashboard/stats");
       const data = await res.json();
-
       setStats({
         emails: data.emails || 0,
         unread: data.unread || 0,
@@ -53,62 +66,53 @@ export default function DashboardPage() {
         aiActions: data.aiActions || 0,
         hoursSaved: data.hoursSaved || "0h",
       });
-
       setRecentEmails(data.recentEmails || []);
     } catch (error) {
       console.error("Failed to load dashboard:", error);
     }
-  }
+  }, []);
 
-  // ✅ Check for new emails function
+  useEffect(() => {
+    loadDashboard();
+    const interval = setInterval(loadDashboard, 30000);
+    return () => clearInterval(interval);
+  }, [loadDashboard]);
+
+  // Replace alert() with toast notifications (fixes issue #11)
   const checkNewEmails = async () => {
     if (checkingEmails) return;
-    
     try {
       setCheckingEmails(true);
-      console.log("📧 Checking for new emails...");
-      
-      const response = await fetch('/api/gmail/check-new');
+      const response = await fetch("/api/gmail/check-new");
       const data = await response.json();
-      
-      console.log("Response:", data);
-      
       if (data.success) {
         if (data.count > 0) {
-          alert(`✅ Found ${data.count} new email(s)!\n\n${data.message}`);
-          // Refresh dashboard to update stats
+          setToast(`Found ${data.count} new email(s)! ${data.message}`);
           loadDashboard();
         } else {
-          alert(`📭 No new emails found.\n\n${data.message}`);
+          setToast(`No new emails found. ${data.message}`);
         }
       } else {
-        alert("❌ Error: " + data.error);
+        setToast(`Error: ${data.error}`);
       }
     } catch (error) {
       console.error("Error checking emails:", error);
-      alert("Error checking emails: " + error);
+      setToast("Error checking emails. Please try again.");
     } finally {
       setCheckingEmails(false);
     }
   };
 
-  // 2. Function that returns the personalized brief
   function getDailyBrief() {
     if (stats.unread > 0) {
       return `You have ${stats.unread} unread emails, ${stats.important} important emails and ${stats.meetings} meetings today. AI has already saved you ${stats.hoursSaved}.`;
     }
-
     return `Your inbox is clear. You have ${stats.meetings} meetings today. AI has already saved you ${stats.hoursSaved}.`;
   }
 
   const hour = new Date().getHours();
-
   const greeting =
-    hour < 12
-      ? "Good Morning"
-      : hour < 17
-      ? "Good Afternoon"
-      : "Good Evening";
+    hour < 12 ? "Good Morning" : hour < 17 ? "Good Afternoon" : "Good Evening";
 
   const fadeUp = {
     initial: { y: 20, opacity: 0 },
@@ -117,6 +121,9 @@ export default function DashboardPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gray-50 dark:bg-[#030712] text-gray-900 dark:text-white antialiased transition-colors duration-300">
+      {/* Toast notification (replaces alert) */}
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+
       {/* Ambient background */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -top-40 left-1/3 h-[500px] w-[700px] rounded-full bg-blue-500/15 blur-[120px] dark:block hidden" />
@@ -154,27 +161,25 @@ export default function DashboardPage() {
                     {session?.user?.name?.split(" ")[0] || "User"}
                   </span>
                 </h1>
-                {/* 3. Replace the static paragraph with the dynamic brief */}
                 <p className="mt-2 text-xs sm:text-sm text-gray-500 dark:text-white/50">
                   {getDailyBrief()}
                 </p>
               </div>
 
-              {/* ✅ ADDED: Check New Emails Button */}
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={checkNewEmails}
                   disabled={checkingEmails}
                   className="group flex w-full sm:w-auto items-center justify-center gap-2 self-start sm:self-auto rounded-full bg-emerald-600 hover:bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {checkingEmails ? (
-                    <>⏳ Checking...</>
-                  ) : (
-                    <>📧 Check New Emails</>
-                  )}
+                  {checkingEmails ? <>⏳ Checking...</> : <>📧 Check New Emails</>}
                 </button>
-                
-                <button className="group flex w-full sm:w-auto items-center justify-center gap-2 self-start sm:self-auto rounded-full bg-gray-900 dark:bg-white px-5 py-2.5 text-sm font-semibold text-white dark:text-black transition-transform hover:scale-[1.02]">
+
+                {/* Fix issue #10: "Compose with AI" now navigates to /ai instead of doing nothing */}
+                <button
+                  onClick={() => router.push("/ai")}
+                  className="group flex w-full sm:w-auto items-center justify-center gap-2 self-start sm:self-auto rounded-full bg-gray-900 dark:bg-white px-5 py-2.5 text-sm font-semibold text-white dark:text-black transition-transform hover:scale-[1.02]"
+                >
                   Compose with AI
                   <Sparkles className="h-4 w-4 transition-transform group-hover:rotate-12" />
                 </button>
@@ -220,31 +225,20 @@ export default function DashboardPage() {
                 <motion.div
                   key={stat.label}
                   {...fadeUp}
-                  transition={{
-                    delay: 0.1 + i * 0.08,
-                    duration: 0.6,
-                  }}
+                  transition={{ delay: 0.1 + i * 0.08, duration: 0.6 }}
                   className="group relative overflow-hidden rounded-2xl border border-gray-200 dark:border-white/5 bg-white dark:bg-white/[0.02] p-5 sm:p-6 backdrop-blur-xl transition hover:border-gray-300 dark:hover:border-white/10 hover:bg-gray-50 dark:hover:bg-white/[0.04]"
                 >
                   <div
                     className={`absolute inset-0 bg-gradient-to-br ${stat.accent} opacity-50`}
                   />
-
                   <div className="relative">
                     <div className="mb-5 flex items-center justify-between">
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-white/5">
                         <stat.icon className={`h-4.5 w-4.5 ${stat.iconColor}`} />
                       </div>
-
-                      <span className="text-xs text-gray-400">
-                        {stat.change}
-                      </span>
+                      <span className="text-xs text-gray-400">{stat.change}</span>
                     </div>
-
-                    <div className="text-2xl sm:text-3xl font-bold">
-                      {stat.val}
-                    </div>
-
+                    <div className="text-2xl sm:text-3xl font-bold">{stat.val}</div>
                     <div className="mt-2 text-xs uppercase tracking-widest text-gray-500">
                       {stat.label}
                     </div>
@@ -264,8 +258,12 @@ export default function DashboardPage() {
                 <div className="relative overflow-hidden rounded-2xl border border-gray-200 dark:border-white/5 bg-white dark:bg-white/[0.02] backdrop-blur-xl">
                   <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between border-b border-gray-200 dark:border-white/5 p-6">
                     <div>
-                      <h2 className="text-lg font-medium text-gray-900 dark:text-white">Recent Activity</h2>
-                      <p className="text-xs text-gray-500 dark:text-white/40">Your latest automated actions</p>
+                      <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                        Recent Activity
+                      </h2>
+                      <p className="text-xs text-gray-500 dark:text-white/40">
+                        Your latest automated actions
+                      </p>
                     </div>
                     <button className="flex items-center gap-1 text-xs text-gray-500 dark:text-white/50 transition hover:text-gray-800 dark:hover:text-white whitespace-nowrap">
                       View all <ArrowUpRight className="h-3 w-3" />
@@ -273,31 +271,35 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="divide-y divide-gray-200 dark:divide-white/5">
-                    {recentEmails.map((email, i) => (
-                      <motion.div
-                        key={i}
-                        initial={{ x: -10, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ delay: 0.5 + i * 0.08, duration: 0.5 }}
-                        className="group flex items-start sm:items-center gap-4 p-5 transition hover:bg-gray-50 dark:hover:bg-white/[0.02]"
-                      >
-                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500">
-                          <Mail className="h-4 w-4" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-semibold">
-                            {email.subject}
+                    {recentEmails.length === 0 ? (
+                      <p className="px-6 py-8 text-xs text-gray-400 dark:text-white/30 text-center">
+                        No recent emails to show.
+                      </p>
+                    ) : (
+                      recentEmails.map((email, i) => (
+                        <motion.div
+                          key={i}
+                          initial={{ x: -10, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          transition={{ delay: 0.5 + i * 0.08, duration: 0.5 }}
+                          className="group flex items-start sm:items-center gap-4 p-5 transition hover:bg-gray-50 dark:hover:bg-white/[0.02]"
+                        >
+                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500">
+                            <Mail className="h-4 w-4" />
                           </div>
-                          <div className="text-xs text-zinc-400">
-                            {email.from}
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-semibold">
+                              {email.subject}
+                            </div>
+                            <div className="text-xs text-zinc-400">{email.from}</div>
+                            <div className="mt-1 truncate text-xs text-zinc-500">
+                              {email.snippet}
+                            </div>
                           </div>
-                          <div className="mt-1 truncate text-xs text-zinc-500">
-                            {email.snippet}
-                          </div>
-                        </div>
-                        <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-emerald-500 dark:text-emerald-400/60 opacity-0 transition group-hover:opacity-100" />
-                      </motion.div>
-                    ))}
+                          <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-emerald-500 dark:text-emerald-400/60 opacity-0 transition group-hover:opacity-100" />
+                        </motion.div>
+                      ))
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -309,39 +311,37 @@ export default function DashboardPage() {
                 className="relative overflow-hidden rounded-2xl border border-gray-200 dark:border-white/10 bg-gradient-to-br from-blue-100/30 via-white to-transparent dark:from-blue-500/15 dark:via-indigo-500/5 dark:to-transparent p-6 backdrop-blur-xl"
               >
                 <div className="absolute -top-12 -right-12 h-40 w-40 rounded-full bg-blue-500/20 blur-[60px] hidden lg:block" />
-
                 <div className="relative">
                   <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-white/5">
                     <Sparkles className="h-4.5 w-4.5 text-blue-500 dark:text-blue-400" />
                   </div>
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">AI Insights</h3>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                    AI Insights
+                  </h3>
                   <p className="mt-1 text-xs text-gray-500 dark:text-white/50">
-                    You're 32% more productive this week
+                    You&apos;re 32% more productive this week
                   </p>
 
                   <div className="mt-6 space-y-3">
                     {[
-                      {
-                        label: "Unread Emails",
-                        val: stats.unread,
-                        trend: "Live",
-                      },
-                      {
-                        label: "Important",
-                        val: stats.important,
-                        trend: "Live",
-                      },
-                      {
-                        label: "Starred",
-                        val: stats.starred,
-                        trend: "Live",
-                      },
+                      { label: "Unread Emails", val: stats.unread, trend: "Live" },
+                      { label: "Important", val: stats.important, trend: "Live" },
+                      { label: "Starred", val: stats.starred, trend: "Live" },
                     ].map((m) => (
-                      <div key={m.label} className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-white/5 bg-gray-50 dark:bg-white/5 px-3 sm:px-4 py-3">
-                        <span className="text-xs text-gray-600 dark:text-white/60">{m.label}</span>
+                      <div
+                        key={m.label}
+                        className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-white/5 bg-gray-50 dark:bg-white/5 px-3 sm:px-4 py-3"
+                      >
+                        <span className="text-xs text-gray-600 dark:text-white/60">
+                          {m.label}
+                        </span>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">{m.val}</span>
-                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400">{m.trend}</span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {m.val}
+                          </span>
+                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400">
+                            {m.trend}
+                          </span>
                         </div>
                       </div>
                     ))}

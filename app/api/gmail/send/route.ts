@@ -1,69 +1,62 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
-import { google } from "googleapis";
-import { PrismaClient } from "@prisma/client";
+import { sendEmail } from "@/lib/sendEmail";
+import { db } from "@/lib/db";
 
-const prisma = new PrismaClient();
+// Email validation regex (fixes issue #3 — no recipient validation)
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_SUBJECT_LENGTH = 200;
+const MAX_MESSAGE_LENGTH = 50_000;
 
 export async function POST(req: Request) {
   try {
     const session: any = await getServerSession(authOptions);
 
     if (!session?.accessToken || !session?.user?.email) {
-      return Response.json({
-        success: false,
-        error: "Not authenticated",
-      });
+      return Response.json(
+        { success: false, error: "Not authenticated" },
+        { status: 401 }
+      );
     }
 
     const body = await req.json();
 
     // Validate required fields
     if (!body.to || !body.subject || !body.message) {
-      return Response.json({
-        success: false,
-        error: "Missing required fields: to, subject, message",
-      });
+      return Response.json(
+        { success: false, error: "Missing required fields: to, subject, message" },
+        { status: 400 }
+      );
     }
 
-    const oauth2Client = new google.auth.OAuth2();
+    // Validate recipient email format (fixes issue #3)
+    if (!EMAIL_REGEX.test(body.to)) {
+      return Response.json(
+        { success: false, error: "Invalid recipient email address" },
+        { status: 400 }
+      );
+    }
 
-    oauth2Client.setCredentials({
-      access_token: session.accessToken,
-    });
+    // Validate field lengths to prevent oversized payloads
+    if (body.subject.length > MAX_SUBJECT_LENGTH) {
+      return Response.json(
+        { success: false, error: `Subject must be ${MAX_SUBJECT_LENGTH} characters or fewer` },
+        { status: 400 }
+      );
+    }
+    if (body.message.length > MAX_MESSAGE_LENGTH) {
+      return Response.json(
+        { success: false, error: "Message is too long" },
+        { status: 400 }
+      );
+    }
 
-    const gmail = google.gmail({
-      version: "v1",
-      auth: oauth2Client,
-    });
+    // Send email using shared utility (fixes issue #5 — no more internal fetch)
+    await sendEmail(session.accessToken, body.to, body.subject, body.message);
 
-    // Create email with proper headers
-    const email = [
-      `To: ${body.to}`,
-      `Subject: ${body.subject}`,
-      "MIME-Version: 1.0",
-      "Content-Type: text/plain; charset=UTF-8",
-      "",
-      body.message,
-    ].join("\n");
-
-    const encodedEmail = Buffer.from(email)
-      .toString("base64")
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/, "");
-
-    // Send email
-    await gmail.users.messages.send({
-      userId: "me",
-      requestBody: {
-        raw: encodedEmail,
-      },
-    });
-
-    // ✅ Create notification for email sent
+    // Create notification using singleton db client (fixes issue #9)
     try {
-      await prisma.notification.create({
+      await db.notification.create({
         data: {
           title: `Email sent to ${body.to}`,
           type: "mail",
@@ -72,7 +65,6 @@ export async function POST(req: Request) {
       });
     } catch (notifError) {
       console.error("Failed to create notification:", notifError);
-      // Don't fail the request if notification fails
     }
 
     return Response.json({
@@ -81,10 +73,9 @@ export async function POST(req: Request) {
     });
   } catch (error: any) {
     console.error("Send email error:", error);
-    
-    return Response.json({
-      success: false,
-      error: error.message || "Failed to send email",
-    });
+    return Response.json(
+      { success: false, error: error.message || "Failed to send email" },
+      { status: 500 }
+    );
   }
 }

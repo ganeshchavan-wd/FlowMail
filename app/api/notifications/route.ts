@@ -1,9 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { PrismaClient } from "@prisma/client";
+import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
-
-const prisma = new PrismaClient();
 
 export async function GET() {
   try {
@@ -16,19 +14,12 @@ export async function GET() {
       );
     }
 
-    console.log(`🔔 Fetching notifications for: ${session.user.email}`);
-
-    const notifications = await prisma.notification.findMany({
-      where: {
-        userEmail: session.user.email,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+    // Removed noisy console.log that leaked user emails to server logs (fixes issue #9 quality note)
+    const notifications = await db.notification.findMany({
+      where: { userEmail: session.user.email },
+      orderBy: { createdAt: "desc" },
       take: 50,
     });
-
-    console.log(`✅ Found ${notifications.length} notifications`);
 
     const formatted = notifications.map((n) => ({
       id: n.id,
@@ -39,12 +30,9 @@ export async function GET() {
       time: getTimeAgo(n.createdAt),
     }));
 
-    return NextResponse.json({
-      success: true,
-      notifications: formatted,
-    });
+    return NextResponse.json({ success: true, notifications: formatted });
   } catch (error) {
-    console.error("❌ Error fetching notifications:", error);
+    console.error("Error fetching notifications:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch notifications" },
       { status: 500 }

@@ -1,25 +1,90 @@
 "use client";
 
 import { apiFetch } from "@/lib/api";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { useCallback, useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Briefcase,
   UsersRound,
   FolderOpen,
   Plus,
   Search,
-  ChevronRight,
   Sparkles,
   MoreVertical,
   Pencil,
   Trash2,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 
 import CreateDepartmentModal from "@/components/create-department-modal";
 import DepartmentDetailsModal from "@/components/department-details-modal";
 import RenameDepartmentModal from "@/components/rename-department-modal";
+
+// Toast — replaces alert() to fix Capacitor WebView compatibility (fixes issue #11)
+function Toast({ message, onClose }: { message: string; onClose: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 4000);
+    return () => clearTimeout(t);
+  }, [onClose]);
+  return (
+    <div className="fixed bottom-6 right-6 z-50 max-w-sm rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-zinc-900 px-5 py-4 shadow-2xl text-sm text-gray-800 dark:text-white flex items-start gap-3">
+      <span className="flex-1">{message}</span>
+      <button onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:hover:text-white shrink-0">
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
+
+// Inline confirm modal — replaces confirm() which is unreliable in Capacitor WebView (fixes issue #11)
+function ConfirmModal({
+  open,
+  title,
+  description,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  title: string;
+  description: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="w-full max-w-sm rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-zinc-900 p-6 shadow-2xl"
+      >
+        <div className="flex items-center gap-3 mb-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10">
+            <AlertTriangle size={20} className="text-red-500" />
+          </div>
+          <h3 className="font-semibold text-gray-900 dark:text-white">{title}</h3>
+        </div>
+        <p className="text-sm text-gray-600 dark:text-zinc-400 mb-6">{description}</p>
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 rounded-xl border border-gray-200 dark:border-white/10 py-2.5 text-sm font-medium text-gray-700 dark:text-white hover:bg-gray-50 dark:hover:bg-white/5 transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 rounded-xl bg-red-600 hover:bg-red-500 py-2.5 text-sm font-semibold text-white transition"
+          >
+            Delete
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
 
 export default function DepartmentPage() {
   const [departments, setDepartments] = useState<any[]>([]);
@@ -29,19 +94,22 @@ export default function DepartmentPage() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
-  const router = useRouter();
+  const [toast, setToast] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null); // holds department id
 
-  const loadDepartments = async () => {
-    const res = await apiFetch("/api/department/list");
-    const data = await res.json();
-    setDepartments(data);
-  };
+  const loadDepartments = useCallback(async () => {
+    try {
+      const res = await apiFetch("/api/department/list");
+      const data = await res.json();
+      setDepartments(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Failed to load departments:", err);
+      setToast("Failed to load departments. Please refresh.");
+    }
+  }, []);
 
+  // Replace confirm() + alert() with modal + toast (fixes issue #11)
   async function deleteDepartment(id: string) {
-    const ok = confirm(
-      "Are you sure you want to delete this department?\n\nThis will delete all members and documents."
-    );
-    if (!ok) return;
     try {
       const res = await apiFetch("/api/department/delete", {
         method: "POST",
@@ -50,21 +118,23 @@ export default function DepartmentPage() {
       });
       const data = await res.json();
       if (!data.success) {
-        alert(data.message);
+        setToast(data.message || "Failed to delete department.");
         return;
       }
-      alert("Department deleted successfully.");
+      setToast("Department deleted successfully.");
       setMenuOpen(null);
       loadDepartments();
     } catch (err) {
       console.error(err);
-      alert("Unable to delete department.");
+      setToast("Unable to delete department. Please try again.");
+    } finally {
+      setConfirmDelete(null);
     }
   }
 
   useEffect(() => {
     loadDepartments();
-  }, []);
+  }, [loadDepartments]);
 
   const filteredDepartments = departments.filter((department) =>
     department.name.toLowerCase().includes(search.toLowerCase())
@@ -95,7 +165,23 @@ export default function DepartmentPage() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-white dark:bg-[#030303]">
-      {/* Background decorative elements - hidden on mobile */}
+      {/* Toast */}
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+
+      {/* Confirm delete modal */}
+      <AnimatePresence>
+        {confirmDelete && (
+          <ConfirmModal
+            open={!!confirmDelete}
+            title="Delete Department"
+            description="Are you sure you want to delete this department? This will permanently remove all members and documents."
+            onConfirm={() => deleteDepartment(confirmDelete)}
+            onCancel={() => setConfirmDelete(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Background decorative elements */}
       <div className="fixed inset-0 -z-10 overflow-hidden hidden lg:block">
         <div className="absolute -top-40 -left-40 h-96 w-96 rounded-full bg-indigo-600/20 blur-3xl dark:opacity-100 opacity-50" />
         <div className="absolute top-1/2 -right-20 h-80 w-80 rounded-full bg-cyan-600/20 blur-3xl dark:opacity-100 opacity-50" />
@@ -116,8 +202,8 @@ export default function DepartmentPage() {
                 Departments
               </h1>
               <p className="mt-2 max-w-2xl text-sm text-gray-600 dark:text-zinc-400 md:text-base">
-                Organize your team into departments. AI will use these
-                groupings to automate emails, meetings, and more.
+                Organize your team into departments. AI will use these groupings
+                to automate emails, meetings, and more.
               </p>
             </div>
 
@@ -158,24 +244,9 @@ export default function DepartmentPage() {
             className="mt-10 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5"
           >
             {[
-              {
-                label: "Total Departments",
-                value: departments.length,
-                icon: Briefcase,
-                color: "from-indigo-500 to-purple-500",
-              },
-              {
-                label: "Total Members",
-                value: totalMembers,
-                icon: UsersRound,
-                color: "from-cyan-500 to-blue-500",
-              },
-              {
-                label: "Total Documents",
-                value: totalDocuments,
-                icon: FolderOpen,
-                color: "from-emerald-500 to-teal-500",
-              },
+              { label: "Total Departments", value: departments.length, icon: Briefcase, color: "from-indigo-500 to-purple-500" },
+              { label: "Total Members", value: totalMembers, icon: UsersRound, color: "from-cyan-500 to-blue-500" },
+              { label: "Total Documents", value: totalDocuments, icon: FolderOpen, color: "from-emerald-500 to-teal-500" },
             ].map((stat, idx) => (
               <motion.div
                 key={idx}
@@ -213,11 +284,7 @@ export default function DepartmentPage() {
                   whileHover={{ y: -6 }}
                   className="group relative flex flex-col rounded-2xl border border-gray-200 dark:border-white/5 bg-white dark:bg-white/5 p-5 sm:p-6 backdrop-blur-sm transition hover:border-gray-300 dark:hover:border-white/10 hover:shadow-2xl hover:shadow-indigo-500/5"
                 >
-                  <div
-                    className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${getDepartmentGradient(
-                      department.color
-                    )} opacity-0 transition-opacity group-hover:opacity-100`}
-                  />
+                  <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${getDepartmentGradient(department.color)} opacity-0 transition-opacity group-hover:opacity-100`} />
 
                   <div className="relative z-10 flex flex-col h-full">
                     <div className="flex items-start justify-between">
@@ -229,9 +296,7 @@ export default function DepartmentPage() {
                       </div>
                       <div className="relative">
                         <button
-                          onClick={() =>
-                            setMenuOpen(menuOpen === department.id ? null : department.id)
-                          }
+                          onClick={() => setMenuOpen(menuOpen === department.id ? null : department.id)}
                           className="rounded-lg p-2 hover:bg-gray-200 dark:hover:bg-white/10"
                         >
                           <MoreVertical size={18} className="text-gray-600 dark:text-white" />
@@ -249,8 +314,12 @@ export default function DepartmentPage() {
                               <Pencil size={16} />
                               Rename
                             </button>
+                            {/* Opens confirm modal instead of confirm() (fixes issue #11) */}
                             <button
-                              onClick={() => deleteDepartment(department.id)}
+                              onClick={() => {
+                                setMenuOpen(null);
+                                setConfirmDelete(department.id);
+                              }}
                               className="flex w-full items-center gap-3 px-4 py-3 text-red-600 dark:text-red-400 hover:bg-red-500/10"
                             >
                               <Trash2 size={16} />
@@ -313,8 +382,8 @@ export default function DepartmentPage() {
               </div>
               <h3 className="mt-6 text-2xl font-bold text-gray-900 dark:text-white">No Departments Found</h3>
               <p className="mt-2 max-w-sm text-center text-sm text-gray-600 dark:text-zinc-400">
-                Get started by creating your first department. It will help you
-                organize your team and enable AI-powered automation.
+                Get started by creating your first department. It will help you organize your team
+                and enable AI-powered automation.
               </p>
               <motion.button
                 whileHover={{ scale: 1.02 }}
@@ -322,7 +391,7 @@ export default function DepartmentPage() {
                 onClick={() => setOpen(true)}
                 className="mt-6 flex w-full sm:w-auto justify-center items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-500 px-6 py-3 font-semibold text-white shadow-lg shadow-indigo-500/25"
               >
-                <Plus size={18} className="transition-transform group-hover:rotate-90" />
+                <Plus size={18} />
                 Create Department
               </motion.button>
             </motion.div>
@@ -332,10 +401,7 @@ export default function DepartmentPage() {
 
       <CreateDepartmentModal
         open={open}
-        onClose={() => {
-          setOpen(false);
-          loadDepartments();
-        }}
+        onClose={() => { setOpen(false); loadDepartments(); }}
       />
       <DepartmentDetailsModal
         open={detailsOpen}

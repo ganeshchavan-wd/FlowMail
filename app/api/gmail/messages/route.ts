@@ -6,21 +6,13 @@ export async function GET() {
   const session: any = await getServerSession(authOptions);
 
   if (!session?.accessToken) {
-    return Response.json({
-      error: "Not authenticated",
-    });
+    return Response.json({ error: "Not authenticated" }, { status: 401 });
   }
 
   const oauth2Client = new google.auth.OAuth2();
+  oauth2Client.setCredentials({ access_token: session.accessToken });
 
-  oauth2Client.setCredentials({
-    access_token: session.accessToken,
-  });
-
-  const gmail = google.gmail({
-    version: "v1",
-    auth: oauth2Client,
-  });
+  const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
   try {
     const list = await gmail.users.messages.list({
@@ -38,30 +30,22 @@ export async function GET() {
         });
 
         const headers = email.data.payload?.headers || [];
-
-        const subject =
-          headers.find((h) => h.name === "Subject")?.value || "";
-
-        const from =
-          headers.find((h) => h.name === "From")?.value || "";
+        const subject = headers.find((h) => h.name === "Subject")?.value || "";
+        const from = headers.find((h) => h.name === "From")?.value || "";
 
         return {
           id: msg.id,
           subject,
           from,
           snippet: email.data.snippet,
+          // Return labelIds so the inbox filter (unread/priority) can work (fixes issue #8)
+          labelIds: email.data.labelIds || [],
         };
       })
     );
 
-    return Response.json({
-      success: true,
-      emails,
-    });
+    return Response.json({ success: true, emails });
   } catch (error: any) {
-    return Response.json({
-      success: false,
-      error: error.message,
-    });
+    return Response.json({ success: false, error: error.message });
   }
 }
