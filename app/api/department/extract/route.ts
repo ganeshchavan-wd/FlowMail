@@ -4,7 +4,6 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import mammoth from "mammoth";
 import * as XLSX from "xlsx";
-import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 
 const MAX_FILE_SIZE = 4 * 1024 * 1024;
 
@@ -27,36 +26,19 @@ function extractEmails(text: string): string[] {
   ];
 }
 
-
+// Dynamically load pdf-parse only when a PDF is uploaded.
 async function extractPdf(buffer: Buffer): Promise<string> {
-  const pdf = await pdfjsLib.getDocument({
-    data: new Uint8Array(buffer),
-  }).promise;
+  const pdfModule = await import("pdf-parse");
+  const pdfParse = pdfModule.default;
 
-  const pages: string[] = [];
+  const result = await pdfParse(buffer);
 
-  for (
-    let pageNumber = 1;
-    pageNumber <= pdf.numPages;
-    pageNumber++
-  ) {
-    const page = await pdf.getPage(pageNumber);
-    const content = await page.getTextContent();
-
-    const pageText = content.items
-      .map((item: any) =>
-        typeof item.str === "string" ? item.str : ""
-      )
-      .join(" ");
-
-    pages.push(pageText);
-  }
-
-  return pages.join("\n");
+  return result.text;
 }
 
 async function extractDocx(buffer: Buffer): Promise<string> {
   const result = await mammoth.extractRawText({ buffer });
+
   return result.value;
 }
 
@@ -76,7 +58,6 @@ export async function POST(req: NextRequest) {
   let filename = "unknown";
 
   try {
-    // Read the uploaded multipart form.
     const formData = await req.formData();
     const file = formData.get("file");
 
@@ -85,7 +66,7 @@ export async function POST(req: NextRequest) {
         {
           success: false,
           message:
-            'No file received. Please upload a file using the field name "file".',
+            'No file received. Expected form field "file".',
         },
         { status: 400 }
       );
@@ -107,7 +88,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "File size must be 4 MB or smaller.",
+          message: "File size must not exceed 4 MB.",
         },
         { status: 413 }
       );
@@ -121,7 +102,7 @@ export async function POST(req: NextRequest) {
         {
           success: false,
           message:
-            "Unsupported file type. Supported formats: PDF, DOCX, TXT, CSV, XLSX.",
+            "Unsupported file type. Use PDF, DOCX, TXT, CSV, or XLSX.",
         },
         { status: 400 }
       );
@@ -154,8 +135,8 @@ export async function POST(req: NextRequest) {
 
     console.info("[department/extract] Success", {
       filename,
-      fileSize: file.size,
       extension,
+      size: file.size,
       totalEmails: emails.length,
     });
 
@@ -178,7 +159,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        message: "Unable to process document. Please try another file.",
+        message: "Unable to process document. Check server logs.",
       },
       { status: 500 }
     );
