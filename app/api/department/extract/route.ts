@@ -1,3 +1,4 @@
+
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
@@ -5,58 +6,128 @@ import mammoth from "mammoth";
 import * as XLSX from "xlsx";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 
+const MAX_FILE_SIZE = 4 * 1024 * 1024;
+
+const ALLOWED_EXTENSIONS = [
+  "pdf",
+  "docx",
+  "txt",
+  "csv",
+  "xlsx",
+];
+
+function extractEmails(text: string): string[] {
+  const matches =
+    text.match(
+      /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g
+    ) || [];
+
+  return [
+    ...new Set(matches.map((email) => email.toLowerCase())),
+  ];
+}
+
+
 async function extractPdf(buffer: Buffer): Promise<string> {
   const pdf = await pdfjsLib.getDocument({
     data: new Uint8Array(buffer),
   }).promise;
 
-  let text = "";
+  const pages: string[] = [];
 
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-
+  for (
+    let pageNumber = 1;
+    pageNumber <= pdf.numPages;
+    pageNumber++
+  ) {
+    const page = await pdf.getPage(pageNumber);
     const content = await page.getTextContent();
 
-    text += content.items
-      .map((item: any) => item.str)
+    const pageText = content.items
+      .map((item: any) =>
+        typeof item.str === "string" ? item.str : ""
+      )
       .join(" ");
 
-    text += "\n";
+    pages.push(pageText);
   }
 
-  return text;
+  return pages.join("\n");
 }
-function extractEmails(text: string) {
-  const emails =
-    text.match(
-      /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g
-    ) || [];
 
-  return [...new Set(emails)];
+async function extractDocx(buffer: Buffer): Promise<string> {
+  const result = await mammoth.extractRawText({ buffer });
+  return result.value;
+}
+
+function extractXlsx(buffer: Buffer): string {
+  const workbook = XLSX.read(buffer, {
+    type: "buffer",
+  });
+
+  return workbook.SheetNames.map((sheetName) => {
+    const worksheet = workbook.Sheets[sheetName];
+
+    return XLSX.utils.sheet_to_csv(worksheet);
+  }).join("\n");
 }
 
 export async function POST(req: NextRequest) {
+  let filename = "unknown";
+
   try {
+    // Read the uploaded multipart form.
     const formData = await req.formData();
+    const file = formData.get("file");
 
-    const file = formData.get("file") as File;
-
-    if (!file) {
+    if (!(file instanceof File)) {
       return NextResponse.json(
         {
           success: false,
-          message: "No file uploaded",
+          message:
+            'No file received. Please upload a file using the field name "file".',
         },
+        { status: 400 }
+      );
+    }
+
+    filename = file.name;
+
+    if (file.size === 0) {
+      return NextResponse.json(
         {
-          status: 400,
-        }
+          success: false,
+          message: "The uploaded file is empty.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "File size must be 4 MB or smaller.",
+        },
+        { status: 413 }
+      );
+    }
+
+    const extension =
+      filename.split(".").pop()?.toLowerCase() || "";
+
+    if (!ALLOWED_EXTENSIONS.includes(extension)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Unsupported file type. Supported formats: PDF, DOCX, TXT, CSV, XLSX.",
+        },
+        { status: 400 }
       );
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-
-    const extension =
-      file.name.split(".").pop()?.toLowerCase() || "";
 
     let text = "";
 
@@ -66,68 +137,50 @@ export async function POST(req: NextRequest) {
         break;
 
       case "docx":
-        const doc = await mammoth.extractRawText({
-          buffer,
-        });
-
-        text = doc.value;
+        text = await extractDocx(buffer);
         break;
 
       case "txt":
-        text = buffer.toString("utf8");
-        break;
-
       case "csv":
         text = buffer.toString("utf8");
         break;
 
       case "xlsx":
-        const workbook = XLSX.read(buffer);
-
-        workbook.SheetNames.forEach((sheet) => {
-          const worksheet =
-            workbook.Sheets[sheet];
-
-          text += XLSX.utils.sheet_to_csv(
-            worksheet
-          );
-        });
-
+        text = extractXlsx(buffer);
         break;
-
-      default:
-        return NextResponse.json(
-          {
-            success: false,
-            message:
-              "Supported formats: PDF, DOCX, TXT, CSV, XLSX",
-          },
-          {
-            status: 400,
-          }
-        );
     }
 
     const emails = extractEmails(text);
 
+    console.info("[department/extract] Success", {
+      filename,
+      fileSize: file.size,
+      extension,
+      totalEmails: emails.length,
+    });
+
     return NextResponse.json({
       success: true,
-      filename: file.name,
+      filename,
       totalEmails: emails.length,
       emails,
       preview: text.substring(0, 500),
     });
   } catch (error) {
-    console.error(error);
+    console.error("[department/extract] Failed:", {
+      filename,
+      error:
+        error instanceof Error
+          ? error.stack || error.message
+          : String(error),
+    });
 
     return NextResponse.json(
       {
         success: false,
-        message: "Unable to process document.",
+        message: "Unable to process document. Please try another file.",
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
-} 
+}

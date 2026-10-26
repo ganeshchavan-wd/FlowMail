@@ -1,7 +1,7 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { Mail, Sparkles, User, UserPlus } from "lucide-react";
+import { Mail, Send, Sparkles, User, UserPlus } from "lucide-react";
 import Logo from "@/components/logo";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession } from "next-auth/react";
@@ -13,6 +13,9 @@ export default function LoginPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
   const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     // Only redirect if authenticated and not already on dashboard
@@ -33,6 +36,45 @@ export default function LoginPage() {
     } catch (error) {
       console.error("Authentication error:", error);
       // You might want to show a toast notification here
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleMagicLink = async () => {
+    if (isLoading) return;
+
+    setError("");
+    setMagicLinkSent(false);
+
+    if (!email.trim()) {
+      setError("Please enter your email address.");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch("/api/auth/magic-link", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to send magic link.");
+      }
+
+      setMagicLinkSent(true);
+    } catch (error: any) {
+      console.error("Magic link error:", error);
+      setError(error.message || "Failed to send magic link.");
     } finally {
       setIsLoading(false);
     }
@@ -114,15 +156,13 @@ export default function LoginPage() {
 
             <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4">
               <h3 className="text-white font-semibold text-center">
-                <h3 className="text-white font-semibold text-center">
-  FlowMail – AI Powered Gmail & Calendar Assistant
-</h3>
+                FlowMail – AI Powered Gmail & Calendar Assistant
               </h3>
 
               <p className="mt-2 text-xs text-zinc-400 text-center leading-6">
                 FlowMail securely connects to your Google account to summarize Gmail emails, organize messages, generate AI replies, 
                 detect meetings, search emails intelligently, and manage your Google Calendar.
-                 Google account access is requested only after your permission through Google OAuth.
+                Google account access is requested only after your permission through Google OAuth.
               </p>
 
               <p className="mt-3 text-[11px] text-zinc-500 text-center">
@@ -130,29 +170,108 @@ export default function LoginPage() {
               </p>
             </div>
 
+            {/* Email Login */}
+            <div className="mt-8 space-y-3">
+              <div>
+                <label className="block text-sm text-zinc-300 mb-2">
+                  Email address
+                </label>
+
+                <div className="relative">
+                  <Mail
+                    size={18}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"
+                  />
+
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setError("");
+                      setMagicLinkSent(false);
+                    }}
+                    placeholder="you@example.com"
+                    disabled={isLoading}
+                    className="w-full h-14 rounded-2xl border border-white/10 bg-white/5 pl-12 pr-4 text-white placeholder:text-zinc-600 outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={handleMagicLink}
+                disabled={isLoading}
+                className={`w-full h-14 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold flex items-center justify-center gap-3 transition-all ${
+                  isLoading
+                    ? "opacity-70 cursor-not-allowed"
+                    : "hover:scale-[1.02] active:scale-[0.98]"
+                } shadow-lg shadow-purple-500/25`}
+              >
+                {isLoading ? (
+                  <>
+                    <svg
+                      className="animate-spin h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send size={20} />
+                    Send Magic Link
+                  </>
+                )}
+              </button>
+
+              {magicLinkSent && (
+                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-center text-sm text-emerald-400">
+                  Magic link sent! Check your email.
+                </div>
+              )}
+
+              {error && (
+                <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-center text-sm text-red-400">
+                  {error}
+                </div>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div className="flex items-center gap-4 my-6">
+              <div className="h-px flex-1 bg-white/10" />
+              <span className="text-xs text-zinc-500">OR</span>
+              <div className="h-px flex-1 bg-white/10" />
+            </div>
+
+            {/* Google Login */}
             <button
               onClick={handleGoogleAuth}
               disabled={isLoading}
-              className={`mt-8 w-full h-14 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold flex items-center justify-center gap-3 transition-all ${
-                isLoading 
-                  ? "opacity-70 cursor-not-allowed" 
+              className={`w-full h-14 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 text-white font-semibold flex items-center justify-center gap-3 transition-all ${
+                isLoading
+                  ? "opacity-70 cursor-not-allowed"
                   : "hover:scale-[1.02] active:scale-[0.98]"
-              } shadow-lg shadow-purple-500/25`}
+              }`}
             >
-              {isLoading ? (
-                <>
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Redirecting...
-                </>
-              ) : (
-                <>
-                  <Mail size={20} />
-                  {isLogin ? "Login with Google" : "Sign Up with Google"}
-                </>
-              )}
+              <Mail size={20} />
+              {isLogin ? "Continue with Google" : "Sign Up with Google"}
             </button>
 
             <div className="mt-6 text-center">
