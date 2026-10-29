@@ -14,7 +14,6 @@ import {
   LogOut,
   Settings,
   HelpCircle,
-  Sparkles,
 } from "lucide-react";
 
 interface NavbarProps {
@@ -155,10 +154,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
               <Menu className="h-5 w-5" />
             </button>
 
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600">
-                <Sparkles className="h-4 w-4 text-white" />
-              </div>
+            <div className="flex items-center">
               <div className="hidden sm:block">
                 <h1 className="text-sm font-semibold text-gray-900 dark:text-white">
                   {getPageTitle()}
