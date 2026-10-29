@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import type { Transition } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { motion, LayoutGroup, AnimatePresence } from "framer-motion";
 import Logo from "@/components/logo";
@@ -184,22 +183,6 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
         </nav>
       </LayoutGroup>
 
-      {/* Footer status */}
-      <div className="mt-auto pb-6 relative overflow-hidden p-4 border border-gray-200 dark:border-white/[0.03] rounded-xl bg-gradient-to-b from-white/30 to-white/10 dark:from-white/[0.01] dark:to-white/[0.03] shadow-[inset_0_1px_1px_rgba(0,0,0,0.02)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.02)] flex-shrink-0">
-        <div className="absolute inset-0 bg-gray-100/40 dark:bg-zinc-950/40 backdrop-blur-md -z-10" />
-        <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500 dark:text-zinc-500 font-bold">
-          System Status
-        </p>
-        <div className="flex items-center gap-2.5 mt-2.5">
-          <div className="relative flex h-2 w-2 flex-shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-25 duration-1000" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.6)]" />
-          </div>
-          <span className="text-xs font-medium text-gray-700 dark:text-zinc-300 tracking-tight truncate min-w-0">
-            All Systems Operational
-          </span>
-        </div>
-      </div>
     </>
   );
 
