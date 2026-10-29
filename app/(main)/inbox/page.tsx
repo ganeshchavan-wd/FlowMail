@@ -90,7 +90,7 @@ export default function InboxPage() {
   const [categoryEmails, setCategoryEmails] = useState<any[]>([]);
 
   // Local UX enhancement states
-  const [activeFilter, setActiveFilter] = useState<"all" | "unread" | "priority">("all");
+  const [activeFilter, setActiveFilter] = useState<"all" | "unread">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
   // Parallax Ambient Light Engine
@@ -235,15 +235,11 @@ export default function InboxPage() {
 
   const filteredEmails = useMemo(() => {
     return emails.filter((email) => {
-      // Fix issue #8: activeFilter was never used — now properly filters emails
+      // Show all emails or only unread emails.
       const matchesFilter =
         activeFilter === "all"
           ? true
-          : activeFilter === "unread"
-          ? email.labelIds?.includes("UNREAD") ?? false
-          : activeFilter === "priority"
-          ? email.labelIds?.includes("IMPORTANT") ?? false
-          : true;
+          : email.labelIds?.includes("UNREAD") ?? false;
 
       const matchesSearch =
         email.from.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -348,7 +344,7 @@ export default function InboxPage() {
           {/* Integrated Multi-Filter Control Strip */}
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-1.5 rounded-xl bg-gray-200 dark:bg-neutral-900/40 p-1 border border-gray-300 dark:border-white/[0.04] w-fit backdrop-blur-md overflow-x-auto">
-              {(["all", "unread", "priority"] as const).map((filter) => (
+              {(["all", "unread"] as const).map((filter) => (
                 <button
                   key={filter}
                   onClick={() => setActiveFilter(filter)}
