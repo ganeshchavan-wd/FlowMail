@@ -2,7 +2,7 @@
 
 ### Smart, Simple & Efficient Email Management
 
-FlowMail is a modern email management project designed to simplify email communication and improve productivity. It aims to provide users with a clean, intuitive experience for managing everyday email tasks.
+FlowMail is a modern email management project designed to simplify email communication and improve productivity. It aims to provide users with a clean, intuitive experience for managing everyday email tasks..
 
 ---
 
